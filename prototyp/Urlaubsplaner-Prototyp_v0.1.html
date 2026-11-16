@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Urlaubsplaner</title>
+<style>
+:root{
+  --brand-dark:#3B3B38; --brand-yellow:#FFDB05; --brand-cyan:#29CCF0; --brand-pink:#F9375F;
+  --text:#3B3B38; --text-muted:#5F5F5A; --surface:#F6F6F4; --border:#DADAD6; --line:#8C8C86; --bg:#FFFFFF;
+  --ok-fg:#1E6B34; --ok-bg:#E3F4E8; --warn-fg:#7A5300; --warn-bg:#FFF4D1; --crit-fg:#A61B1B; --crit-bg:#FDE4E4;
+  --focus:#0B5FFF; --font:Arial,"Helvetica Neue",sans-serif; --radius:6px; --radius-card:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:15px;line-height:1.5;color:var(--text);background:var(--bg)}
+[hidden]{display:none !important}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.topbar{height:6px;background:var(--brand-dark)}
+.app-header{display:flex;align-items:center;gap:16px;padding:16px 24px;background:var(--bg);border-bottom:4px solid var(--brand-yellow);flex-wrap:wrap}
+.logo-slot img{height:40px;width:auto;display:block}
+.app-title{flex:1;min-width:200px}
+.app-title h1{font-size:22px;margin:0;font-weight:700;color:var(--brand-dark)}
+.app-title .sub{font-size:13px;color:var(--text-muted)}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-card);padding:16px 24px}
+.kpi{background:var(--surface);border-radius:var(--radius-card);padding:12px 16px}
+.kpi .l{font-size:13px;color:var(--text-muted)}
+.kpi .v{font-size:20px;font-weight:700}
+.badge{font-size:13px;padding:2px 8px;border-radius:4px;white-space:nowrap;font-weight:700}
+.badge.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.badge.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.badge.crit{background:var(--crit-bg);color:var(--crit-fg)}
+.badge.neutral{background:var(--surface);color:var(--text-muted);font-weight:400}
+.fld{margin-bottom:12px}
+.lbl{display:block;font-size:13px;color:var(--text-muted);margin-bottom:4px}
+input[type=text],input[type=email],select,.fld input,.fld select{display:block;width:100%;box-sizing:border-box;height:40px;padding:8px 10px;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--text);margin:0}
+textarea{display:block;width:100%;box-sizing:border-box;min-height:88px;height:auto;padding:8px 10px;font:inherit;font-size:15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--text);resize:vertical}
+.primary{background:var(--brand-dark);color:#fff;border:0;border-radius:var(--radius);padding:10px 16px;font:inherit;cursor:pointer}
+.secondary{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:var(--radius);padding:10px 16px;font:inherit;cursor:pointer}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;background:var(--bg);margin-bottom:8px;cursor:pointer}
+.opt.sel{border:2px solid var(--focus);padding:9px 11px}
+.hint{font-size:13px;color:var(--text-muted);margin:6px 0}
+.banner{border:1px solid var(--crit-fg);background:var(--crit-bg);color:var(--crit-fg);border-radius:var(--radius);padding:10px 14px;font-weight:700}
+.openbox{background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--radius);padding:10px 14px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+thead th{background:var(--brand-dark);color:#fff;text-align:left;padding:6px 8px;font-weight:700}
+td,th{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.app-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;padding:12px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}
+.class-badge{font-weight:700;color:var(--brand-dark);background:var(--brand-cyan);padding:2px 8px;border-radius:4px}
+@media print{
+  .noprint,nav,.scorebar{display:none !important}
+  thead{display:table-header-group}
+  tr{page-break-inside:avoid}
+  @page{margin:15mm}
+}
+
+/* ---------- Urlaubsplaner ---------- */
+main{max-width:1440px;margin:0 auto;padding:16px 24px}
+.wrap-footer{max-width:1440px;margin:0 auto;padding:0 24px}
+.demo{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;font-size:13px}
+.demo label{font-weight:700}
+.demo select{width:auto;min-width:280px;max-width:100%}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:4px solid transparent;padding:10px 14px;font:inherit;cursor:pointer;color:var(--text-muted);min-height:44px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--text);font-weight:700;border-bottom-color:var(--brand-yellow)}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:16px;margin:20px 0 8px}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px}
+.toolbar .fld{margin:0;min-width:150px}
+.toolbar .grow{flex:1}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.primary,.secondary{min-height:40px}
+.primary:disabled,.secondary:disabled{opacity:.5;cursor:not-allowed}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.kpi .v.crit{color:var(--crit-fg)}
+.scroll{overflow-x:auto}
+.periode{font-weight:700;font-size:16px;margin:4px 0 8px}
+button.link{background:none;border:0;color:var(--text);text-decoration:underline;cursor:pointer;font:inherit;padding:4px 6px;min-height:36px}
+.status-line{min-height:24px;font-size:13px;color:var(--ok-fg);margin-bottom:8px}
+
+/* Kalendermatrix */
+.kal-wrap{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:var(--radius)}
+table.kal{border-collapse:separate;border-spacing:0;width:auto;font-size:12px}
+.kal th,.kal td{padding:0;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:center;vertical-align:middle;min-width:28px;width:28px;height:30px;background:var(--bg)}
+.kal thead th{position:sticky;background:var(--brand-dark);color:#fff;font-weight:700;z-index:2}
+.kal thead tr:first-child th{top:0;height:26px;text-align:left;padding:0 6px}
+.kal thead tr:nth-child(2) th{top:26px;height:38px;line-height:1.1}
+.kal thead th small{display:block;font-weight:400;font-size:10px}
+.kal .name{position:sticky;left:0;z-index:1;text-align:left;padding:0 8px;min-width:190px;max-width:190px;width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400}
+.kal thead th.name{z-index:3;text-align:left}
+.kal tbody th.name.own{font-weight:700}
+.kal td.we{background:var(--surface)}
+.kal td.fe,.kal td.so{background:#E9E9E5}
+.kal thead th.we{background:#55554F}
+.kal thead th.fe,.kal thead th.so{background:#6E6E68}
+.kal td.abw{font-weight:700;color:var(--text)}
+.kal td.idee{outline:2px dashed var(--brand-dark);outline-offset:-4px}
+.kal td.sperr{background:var(--crit-bg);color:var(--crit-fg);font-weight:700}
+.kal td.info{background:#E5F7FC;color:var(--text);font-weight:700}
+.kal tr.zr th.name{font-size:12px;color:var(--text-muted)}
+.kal tr.anw th,.kal tr.anw td{border-top:2px solid var(--brand-dark);font-weight:700}
+.kal td.unter{background:var(--crit-bg);color:var(--crit-fg)}
+.kal .heute{border-left:2px solid var(--brand-pink);border-right:2px solid var(--brand-pink)}
+.kal td[data-own]{cursor:pointer}
+.kal td[data-own]:hover{outline:2px solid var(--focus);outline-offset:-2px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;margin-top:12px;align-items:center}
+.sw{display:inline-block;min-width:28px;height:22px;line-height:20px;text-align:center;border:1px solid var(--border);border-radius:4px;margin-right:6px;font-size:12px;font-weight:700;padding:0 4px;vertical-align:middle}
+.sw.idee{outline:2px dashed var(--brand-dark);outline-offset:-4px}
+
+/* Dialoge und Meldungen */
+dialog{border:1px solid var(--border);border-radius:var(--radius-card);padding:0;max-width:580px;width:calc(100% - 32px);color:var(--text)}
+dialog::backdrop{background:rgba(59,59,56,.45)}
+.dlg-body{padding:16px 24px}
+.dlg-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:12px 24px;border-top:1px solid var(--border);background:var(--surface);border-radius:0 0 var(--radius-card) var(--radius-card)}
+.dlg-actions .left{margin-right:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.msg{list-style:none;padding:0;margin:8px 0 0}
+.msg li{padding:8px 10px;border-radius:var(--radius);margin-bottom:6px;font-size:14px}
+.msg li.crit{background:var(--crit-bg);color:var(--crit-fg)}
+.msg li.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.msg li.info{background:var(--surface);color:var(--text)}
+.msg li.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px}
+.inline-form{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:8px}
+.inline-form .fld{margin:0;flex:1;min-width:130px}
+td input[type=number],td select{height:36px;padding:4px 8px;font-size:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit}
+td input[type=number]{width:80px}
+td select{width:auto;min-width:120px}
+.num{text-align:right;white-space:nowrap}
+
+@media (max-width:700px){
+  main{padding:12px 16px}
+  .app-header{padding:12px 16px}
+  .demo{padding:8px 16px}
+  .demo select{min-width:0;width:100%}
+  .wrap-footer{padding:0 16px}
+  .grid2{grid-template-columns:1fr}
+  .card{padding:12px 16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+@media print{
+  .demo,.tabs,.toolbar,.btnrow,.status-line,dialog{display:none !important}
+  .kal-wrap{max-height:none;overflow:visible}
+}
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<header class="app-header">
+  <div class="logo-slot"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjwhLS0gQ3JlYXRlZCB3aXRoIElua3NjYXBlIChodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy8pIGJ5IE1hcnN1cGlsYW1pIC0tPgo8c3ZnCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgdmVyc2lvbj0iMS4xIgogICBpZD0ic3ZnNTY4MSIKICAgd2lkdGg9IjEwMjQiCiAgIGhlaWdodD0iMzEzIgogICB2aWV3Qm94PSItMS42MjM4NzMwMyAtMS42MjM4NzMwMyAxODcuOTg3MTQ2MDYgNTcuMzc2ODQ3MDYiPgogIDxkZWZzCiAgICAgaWQ9ImRlZnM1NjgzIiAvPgogIDxwYXRoCiAgICAgZD0ibSAxMTcuNzIzODksNDIuMjE1IDAsMC4xMjUgLTAuNTE4OCwwIDAsMC44MyAwLjUxODgsMCAwLDMuMzY1IDEuMDQ1LDAgMCwtMy4zNjUgMC44OTYyLDAgMCwtMC44MyAtMC44OTYyLDAgMCwtMC4xIGMgMCwtMC42MSAwLjUxLC0wLjY4MzcgMC44MDYyLC0wLjY4MzcgMC4xMjM4LDAgMC4yMTUsMC4wMTYgMC4yMTUsMC4wMTYgbCAwLC0wLjg4IGMgMCwtMC4wMSAtMC4xNCwtMC4wMzMgLTAuMzUzNywtMC4wMzMgLTAuNTg2MywwIC0xLjcxMjUsMC4xOCAtMS43MTI1LDEuNTU1IG0gLTUuNDYwOCwwLjAyNSBjIC0xLjI2LDAgLTIuMTMxMiwwLjkwMzggLTIuMTMxMiwyLjE5NzUgMCwxLjE5MzggMC44NjM3LDIuMTk2MyAyLjI1NSwyLjE5NjMgMS4wNDYyLDAgMS42ODYyLC0wLjYzMzggMS42ODYyLC0wLjYzMzggbCAtMC40MzUsLTAuNzIyNSBjIDAsMCAtMC41MDEyLDAuNDY3NSAtMS4xNzc1LDAuNDY3NSAtMC42MzI1LDAgLTEuMTc2MiwtMC4zODYyIC0xLjI1ODcsLTEuMTI4NyBsIDIuODk1LDAgYyAwLDAgMC4wMjYsLTAuMjYyNSAwLjAyNiwtMC4zODUgMCwtMS4xMTEzIC0wLjY1ODgsLTEuOTkxMyAtMS44NiwtMS45OTEzIG0gLTEuMDI4OCwxLjY1NSBjIDAuMTE1LC0wLjUyODcgMC40OTM4LC0wLjg0ODcgMS4wMjg4LC0wLjg0ODcgMC40Mjc1LDAgMC43NzM3LDAuMzQ1IDAuNzksMC44NDg3IGwgLTEuODE4OCwwIHogbSAtMi4yNDk3LC0zLjIwMzEgLTAuOTAzOCwwIDAsMC45NjEyIDAuOTAzOCwwIDAsLTAuOTYxMiB6IG0gNDYuMzgzNyw0Ljc4MjYgMCwtMS42Mzg3IGMgMCwtMS4xMTEzIC0wLjUzNSwtMS41OTYzIC0xLjQ2MzcsLTEuNTk2MyAtMC44NDc1LDAgLTEuMzAxMywwLjUxODggLTEuNDgxMywwLjg3MjUgbCAtMC4wMTgsMCBjIDAsMCAwLjAxOCwtMC4wOSAwLjAxOCwtMC4xODI1IGwgMCwtMC4xMjEyIGMgMCwtMC4yOTc1IC0wLjE4MTIsLTAuNDY4OCAtMC41NTEyLC0wLjQ2ODggbCAtMC45NjI1LDAgMCwwLjg4NzUgMC4zMywwIGMgMC4xMTM3LDAgMC4xOCwwLjA1NiAwLjE4LDAuMTggbCAwLDMuMTI3NSAxLjAzNjIsMCAwLC0xLjkyMzcgYyAwLC0wLjE5ODggMC4wMjQsLTAuMzg3NSAwLjA4MSwtMC41NjEzIDAuMTQ4OCwtMC41MDI1IDAuNTY4OCwtMC44NTYyIDEuMTI4OCwtMC44NTYyIDAuNTI3NSwwIDAuNjU4NywwLjM0NjIgMC42NTg3LDAuODU2MiBsIDAsMS45MjYzIGMgMCwwLjM5NSAwLjE2NSwwLjU1ODcgMC41NTg4LDAuNTU4NyBsIDAuOTk1LDAgMCwtMC44Nzg3IC0wLjMyNzUsMCBjIC0wLjExNSwwIC0wLjE4MjUsLTAuMDY2IC0wLjE4MjUsLTAuMTgxMyBtIC01LjQ1NTcsMCAwLC0yLjU3NjIgYyAwLC0wLjM4NzUgLTAuMTYzNywtMC41NTg4IC0wLjU1MTIsLTAuNTU4OCBsIC0wLjk5NSwwIDAsMC44ODc1IDAuMzMsMCBjIDAuMTEzNywwIDAuMTgsMC4wNTYgMC4xOCwwLjE4IGwgMCwyLjU2ODggYyAwLDAuMzk1IDAuMTYzNywwLjU1ODcgMC41NTEzLDAuNTU4NyBsIDAuOTk1LDAgMCwtMC44Nzg3IC0wLjMyODgsMCBjIC0wLjExNSwwIC0wLjE4MTMsLTAuMDY2IC0wLjE4MTMsLTAuMTgxMyBtIC0zMy42ODcxLDAgMCwtNC4yMjM3IGMgMCwtMC4zODYzIC0wLjE3MjUsLTAuNTU4OCAtMC41NTg3LC0wLjU1ODggbCAtMC45OTUsMCAwLDAuODg3NSAwLjMyNzUsMCBjIDAuMTE2MiwwIDAuMTgyNSwwLjA1OSAwLjE4MjUsMC4xODEzIGwgMCw0LjIxNSBjIDAsMC4zOTUgMC4xNjM3LDAuNTU4NyAwLjU1ODcsMC41NTg3IGwgMC45ODYzLDAgMCwtMC44Nzg3IC0wLjMyLDAgYyAtMC4xMTUsMCAtMC4xODEzLC0wLjA2NiAtMC4xODEzLC0wLjE4MTMgbSAxOS45MDA1LC0yLjAwODcgMCwtMC4wMTYgYyAwLjM1MzgsLTAuMTgxMiAwLjcwNjMsLTAuNjAxMiAwLjcwNjMsLTEuMjUxMiAwLC0wLjk2MzggLTAuNzU1LC0xLjUwNjMgLTEuODA4OCwtMS41MDYzIGwgLTIuNTI2MiwwIDAsMC45MTI1IDAuNTM1LDAgMCw0LjM3MTMgYyAwLDAuMzk1IDAuMTcyNSwwLjU1ODcgMC41NiwwLjU1ODcgbCAxLjQ1NSwwIGMgMS4wODc1LDAgMi4wMTYyLC0wLjUyNSAyLjAxNjIsLTEuNjkzNyAwLC0wLjU5MzggLTAuMzAzNywtMS4xODYzIC0wLjkzNzUsLTEuMzc1IG0gLTIuMDE3NSwtMS44NjEzIDAuOTA2MywwIGMgMC40Nzc1LDAgMC43MjM3LDAuMzA1IDAuNzIzNywwLjcyNSAwLDAuNDIxMyAtMC4yNTM3LDAuNzQ4OCAtMC43MDc1LDAuNzQ4OCBsIC0wLjkyMjUsMCAwLC0xLjQ3MzggeiBtIDEuMDIyNSw0LjAxNzUgLTAuODQsMCBjIC0wLjExNSwwIC0wLjE4MjUsLTAuMDY1IC0wLjE4MjUsLTAuMTgxMiBsIDAsLTEuNTA2MyAxLjAyMjUsMCBjIDAuNTE3NSwwIDAuODIzOCwwLjM1MzggMC44MjM4LDAuODQgMCwwLjQ5MzggLTAuMjk3NSwwLjg0NzUgLTAuODIzOCwwLjg0NzUgbSAtMTEuMjk0OSwtMC4xNDc1IDAsLTEuNTY1IGMgMCwtMC45Mzc1IC0wLjQxMTIsLTEuNjcgLTEuODA5OSwtMS42NyAtMC40MzYzLDAgLTEuNTM3NiwwLjA4MiAtMS41Mzc2LDAuODYzOCBsIDAsMC40NDUgMC45Njg4LDAgMCwtMC4yMjI1IGMgMCwtMC4yMzEzIDAuMzcxMiwtMC4yOCAwLjU2MTIsLTAuMjggMC41MzUsMCAwLjc3MzgsMC4yMjI1IDAuNzczOCwwLjgyMzcgbCAwLDAuMDMzIC0wLjEzMTMsMCBjIC0wLjY4NSwwIC0yLjQ5NDksMC4xMDc1IC0yLjQ5NDksMS40MjM4IDAsMC44Mzg3IDAuNjgzNywxLjMwODcgMS40MzI0LDEuMzA4NyAwLjk0NjMsMCAxLjI2NzUsLTAuNzQxMiAxLjI2NzUsLTAuNzQxMiBsIDAuMDE2LDAgYyAwLDAgLTAuMDEsMC4wNzQgLTAuMDEsMC4xODEyIDAsMC4yNDYzIDAuMTQ4OCwwLjQ2IDAuNTM1LDAuNDYgbCAwLjkzNzUsMCAwLC0wLjg3ODcgLTAuMzI3NSwwIGMgLTAuMTE2MiwwIC0wLjE4MjUsLTAuMDY2IC0wLjE4MjUsLTAuMTgxMyBtIC0xLjAyNzUsLTAuNzU4NyBjIDAsMC41MTEyIC0wLjM5NSwxLjEwNSAtMC45NTYyLDEuMTA1IC0wLjQyNzUsMCAtMC42MzM4LC0wLjI2NSAtMC42MzM4LC0wLjU0NSAwLC0wLjU4MzggMC44NjUsLTAuNjU4OCAxLjQwODgsLTAuNjU4OCBsIDAuMTgxMiwwIDAsMC4wOTkgeiBtIDIxLjE1MDcsLTEuMzU4MiAtMC4wMTYsMCBjIDAsMCAwLjAxNiwtMC4xMDc1IDAuMDE2LC0wLjI2MzcgbCAwLC0wLjI0NSBjIDAsLTAuMzUzOCAtMC4xODg4LC0wLjUxIC0wLjU1ODgsLTAuNTEgbCAtMC45NTUsMCAwLDAuODg3NSAwLjMzLDAgYyAwLjExNjMsMCAwLjE4MTMsMC4wNTggMC4xODEzLDAuMTgxMiBsIDAsMy4xMjc1IDEuMDM1LDAgMCwtMS42NjI1IGMgMCwtMC4yNDc1IDAuMDM0LC0wLjQ3NzUgMC4wOTEsLTAuNjgyNSAwLjE5LC0wLjYyNjIgMC43LC0wLjg4MjUgMS4xNDM3LC0wLjg4MjUgMC4xNDc1LDAgMC4yNTUsMC4wMTkgMC4yNTUsMC4wMTkgbCAwLC0xLjAyODggYyAwLDAgLTAuMDk4LC0wLjAxNiAtMC4xODg3LC0wLjAxNiAtMC42NDI1LDAgLTEuMTQzOCwwLjQ3NjIgLTEuMzMzOCwxLjA3NjIgbSAtMTUuMjE2MSwxLjUwNyAwLC0xLjY5NSAwLjk1NSwwIDAsLTAuODMgLTAuOTU1LDAgMCwtMS4xNDYyIC0xLjAyLDAgMCwxLjE0NjIgLTAuNTY3NSwwIDAsMC44MyAwLjU0MzcsMCAwLDEuODI2MyBjIDAsMS40MDc1IDEuMTYsMS41ODEyIDEuNzQyNSwxLjU4MTIgMC4xOSwwIDAuMzIyNSwtMC4wMjYgMC4zMjI1LC0wLjAyNiBsIDAsLTAuOTEyNSBjIDAsMCAtMC4wNzUsMC4wMTYgLTAuMTksMC4wMTYgLTAuMjg3NSwwIC0wLjgzMTIsLTAuMDk4IC0wLjgzMTIsLTAuNzkgbSAtMi40ODU5LDAuNjA5OSAwLC00LjIyMzcgYyAwLC0wLjM4NjMgLTAuMTcyNSwtMC41NTg4IC0wLjU1ODcsLTAuNTU4OCBsIC0wLjk5NSwwIDAsMC44ODc1IDAuMzI4NywwIGMgMC4xMTUsMCAwLjE4MTMsMC4wNTkgMC4xODEzLDAuMTgxMyBsIDAsNC4yMTUgYyAwLDAuMzk1IDAuMTYzNywwLjU1ODcgMC41NTg3LDAuNTU4NyBsIDAuOTg3NSwwIDAsLTAuODc4NyAtMC4zMiwwIGMgLTAuMTE2MiwwIC0wLjE4MjUsLTAuMDY2IC0wLjE4MjUsLTAuMTgxMyBtIDIxLjEwODQsMCAwLC00LjIyMzcgYyAwLC0wLjM4NjMgLTAuMTcyNSwtMC41NTg4IC0wLjU1ODgsLTAuNTU4OCBsIC0wLjk5NjIsMCAwLDAuODg3NSAwLjMyODcsMCBjIDAuMTE1LDAgMC4xODEzLDAuMDU5IDAuMTgxMywwLjE4MTMgbCAwLDQuMjE1IGMgMCwwLjM5NSAwLjE2NSwwLjU1ODcgMC41NTg3LDAuNTU4NyBsIDAuOTg3NSwwIDAsLTAuODc4NyAtMC4zMiwwIGMgLTAuMTE1LDAgLTAuMTgxMiwtMC4wNjYgLTAuMTgxMiwtMC4xODEzIG0gLTcuNDA4MywtMy4yMzQ1IGMgLTEuMjYsMCAtMi4xMzI1LDAuOTAzOCAtMi4xMzI1LDIuMTk3NSAwLDEuMTkzOCAwLjg2MzgsMi4xOTYzIDIuMjU1LDIuMTk2MyAxLjA0NjMsMCAxLjY4NjMsLTAuNjMzOCAxLjY4NjMsLTAuNjMzOCBsIC0wLjQzNSwtMC43MjI1IGMgMCwwIC0wLjUwMTMsMC40Njc1IC0xLjE3NjMsMC40Njc1IC0wLjYzNSwwIC0xLjE3ODcsLTAuMzg2MiAtMS4yNiwtMS4xMjg3IGwgMi44OTYzLDAgYyAwLDAgMC4wMjUsLTAuMjYyNSAwLjAyNSwtMC4zODUgMCwtMS4xMTEzIC0wLjY1ODgsLTEuOTkxMyAtMS44NTg4LC0xLjk5MTMgbSAtMS4wMywxLjY1NSBjIDAuMTE1LC0wLjUyODcgMC40OTM4LC0wLjg0ODcgMS4wMywtMC44NDg3IDAuNDI3NSwwIDAuNzcyNSwwLjM0NSAwLjc5LDAuODQ4NyBsIC0xLjgyLDAgeiBtIDkuOTk4NCwtMi4yNDE5IDAuOTAzOCwwIDAsLTAuOTYxMiAtMC45MDM4LDAgMCwwLjk2MTIgeiBtIC03OC40NTc4LDAuNTg2OSBjIC0xLjI2LDAgLTIuMTMxMywwLjkwMzggLTIuMTMxMywyLjE5NzUgMCwxLjE5MzggMC44NjM4LDIuMTk2MyAyLjI1NSwyLjE5NjMgMS4wNDUsMCAxLjY4NjMsLTAuNjMzOCAxLjY4NjMsLTAuNjMzOCBsIC0wLjQzNSwtMC43MjI1IGMgMCwwIC0wLjUwMjUsMC40Njc1IC0xLjE3NzUsMC40Njc1IC0wLjYzNSwwIC0xLjE3NzUsLTAuMzg2MiAtMS4yNiwtMS4xMjg3IGwgMi44OTc1LDAgYyAwLDAgMC4wMjQsLTAuMjYyNSAwLjAyNCwtMC4zODUgMCwtMS4xMTEzIC0wLjY1NzUsLTEuOTkxMyAtMS44NTg3LC0xLjk5MTMgbSAtMS4wMjg4LDEuNjU1IGMgMC4xMTUsLTAuNTI4NyAwLjQ5MzgsLTAuODQ4NyAxLjAyODgsLTAuODQ4NyAwLjQyNzUsMCAwLjc3MzcsMC4zNDUgMC43OSwwLjg0ODcgbCAtMS44MTg4LDAgeiBtIDkuNDg5MywtMS4xNzAxIDAsMC4xMDc1IC0wLjAxNiwwIGMgMCwwIC0wLjMyMTIsLTAuNTkyNSAtMS4yOTI1LC0wLjU5MjUgLTEuMjEsMCAtMS44NiwwLjkzNzUgLTEuODYsMi4wOSAwLDEuMTUyNSAwLjY4MzgsMi4xMjI1IDEuODg1LDIuMTIyNSAwLjU2LDAgMC45MjI1LC0wLjE4ODggMS4xNjg4LC0wLjU0MjUgbCAwLjAxNiwwIGMgMCwwIC0wLjAxLDAuMTIzNyAtMC4wMSwwLjIyMjUgbCAwLDAuMTk2MiBjIDAsMC43NTg4IC0wLjU1MjUsMS4wMyAtMS4xODYyLDEuMDMgLTAuNjQyNSwwIC0xLjE2MTMsLTAuMjggLTEuMTYxMywtMC4yOCBsIC0wLjMyLDAuODIzOCBjIDAuNDAyNSwwLjIxMzcgMC45NjI1LDAuMzYyNSAxLjQ5LDAuMzYyNSAxLjA5NSwwIDIuMjEyNSwtMC41NDM4IDIuMjEyNSwtMS45ODUgbCAwLC0yLjg4ODggYyAwLC0wLjEwNzUgMC4wNzUsLTAuMTY1IDAuMTgxMywtMC4xNjUgbCAwLjMyMTIsMCAwLC0wLjg4NzUgLTAuOTcsMCBjIC0wLjMzLDAgLTAuNDYxMiwwLjE5NzUgLTAuNDYxMiwwLjM4NjMgbSAtMS4wNjEzLDIuODQ4NyBjIC0wLjY3NSwwIC0xLjA0NjIsLTAuNTQzNyAtMS4wNDYyLC0xLjI3NjIgMCwtMC43MDg4IDAuMzQ2MiwtMS4xNjg4IDAuOTgsLTEuMTY4OCAwLjU2ODcsMCAxLjA0NSwwLjI1MzggMS4wNDUsMS4yMDg4IDAsMC45NDc1IC0wLjQ3NjMsMS4yMzYyIC0wLjk3ODgsMS4yMzYyIG0gLTE1Ljc2MDIsLTQuODgxNSAtMi4zNzc1LDAgMCwwLjkxMjUgMC41MzM3LDAgMCw0LjM3MTMgYyAwLDAuMzk1IDAuMTY1LDAuNTU4NyAwLjU2LDAuNTU4NyBsIDEuMjgzOCwwIGMgMS44MDI1LDAgMi45Nzg3LC0xLjA4NjIgMi45Nzg3LC0yLjkyODcgMCwtMS44NDYzIC0xLjE3NjIsLTIuOTEzOCAtMi45Nzg3LC0yLjkxMzggbSAtMC4wNTgsNC45MyAtMC41Mjc1LDAgYyAtMC4xMTUsMCAtMC4xODEzLC0wLjA2NSAtMC4xODEzLC0wLjE4MTIgbCAwLC0zLjgzNjMgMC43MDg4LDAgYyAxLjE1MjUsMCAxLjkxODcsMC43IDEuOTE4NywyLjAwMTMgMCwxLjMxNzUgLTAuNzUsMi4wMTYyIC0xLjkxODcsMi4wMTYyIG0gNS4xMzkxLC00LjkzMDIgLTAuOTA1LDAgMCwwLjk2MTIgMC45MDUsMCAwLC0wLjk2MTIgeiBtIDAuMDgyLDQuNzgyNiAwLC0yLjU3NjIgYyAwLC0wLjM4NzUgLTAuMTYzNywtMC41NTg4IC0wLjU1LC0wLjU1ODggbCAtMC45OTYyLDAgMCwwLjg4NzUgMC4zMywwIGMgMC4xMTUsMCAwLjE4MTIsMC4wNTYgMC4xODEyLDAuMTggbCAwLDIuNTY4OCBjIDAsMC4zOTUgMC4xNjM4LDAuNTU4NyAwLjU1LDAuNTU4NyBsIDAuOTk1LDAgMCwtMC44Nzg3IC0wLjMyODcsMCBjIC0wLjExNSwwIC0wLjE4MTMsLTAuMDY2IC0wLjE4MTMsLTAuMTgxMyBtIDIyLjczNjIsMCAwLC0xLjYzODcgYyAwLC0xLjExMTMgLTAuNTM1LC0xLjU5NjMgLTEuNDY1LC0xLjU5NjMgLTAuODQ3NSwwIC0xLjMsMC41MTg4IC0xLjQ4MTMsMC44NzI1IGwgLTAuMDE2LDAgYyAwLDAgMC4wMTYsLTAuMDkgMC4wMTYsLTAuMTgyNSBsIDAsLTAuMTIxMiBjIDAsLTAuMjk3NSAtMC4xODEyLC0wLjQ2ODggLTAuNTUxMiwtMC40Njg4IGwgLTAuOTYyNSwwIDAsMC44ODc1IDAuMzI4NywwIGMgMC4xMTYzLDAgMC4xODEzLDAuMDU2IDAuMTgxMywwLjE4IGwgMCwzLjEyNzUgMS4wMzYyLDAgMCwtMS45MjM3IGMgMCwtMC4xOTg4IDAuMDI1LC0wLjM4NzUgMC4wODMsLTAuNTYxMyAwLjE0NzUsLTAuNTAyNSAwLjU2ODgsLTAuODU2MiAxLjEyNzUsLTAuODU2MiAwLjUyNzUsMCAwLjY2LDAuMzQ2MiAwLjY2LDAuODU2MiBsIDAsMS45MjYzIGMgMCwwLjM5NSAwLjE2MzgsMC41NTg3IDAuNTU4OCwwLjU1ODcgbCAwLjk5NSwwIDAsLTAuODc4NyAtMC4zMjg4LDAgYyAtMC4xMTYyLDAgLTAuMTgxMiwtMC4wNjYgLTAuMTgxMiwtMC4xODEzIG0gNzAuNTM1OCwxLjA1OTkgMS4wMTI1LDAgMCwtMS4wNDM4IC0xLjAxMjUsMCAwLDEuMDQzOCB6IG0gLTIuOTMyMSwtMy4xMTA2IGMgMCwtMC4yNDc1IDAuMjU2MiwtMC4zNzc1IDAuNjI2MiwtMC4zNzc1IDAuMjMsMCAwLjUyNzUsMC4wOTcgMC41Mjc1LDAuMjk1IGwgMCwwLjIwNjIgMC45MiwwIDAsLTAuNDM3NSBjIDAsLTAuNjgxMiAtMC45MDM3LC0wLjg3IC0xLjQ3MTIsLTAuODcgLTAuODczOCwwIC0xLjYzLDAuMzg2MyAtMS42MywxLjIyNjMgMCwxLjM1NzUgMi4yMTM3LDEuMzQ4NyAyLjIxMzcsMS45NDI1IDAsMC4yOCAtMC4yNDc1LDAuNDExMiAtMC41Njg3LDAuNDExMiAtMC43MTUsMCAtMS4yNSwtMC42MTc1IC0xLjI1LC0wLjYxNzUgbCAtMC40OTM4LDAuNjgyNSBjIDAsMCAwLjU5MTMsMC43NDg4IDEuNzQzOCwwLjc0ODggMC45MTM3LDAgMS42MTI1LC0wLjQ5MjUgMS42MTI1LC0xLjI4MjUgMCwtMS40IC0yLjIzLC0xLjI2ODggLTIuMjMsLTEuOTI3NSBtIC01MS43NDk2LC0yLjI1NTUgLTEuMTE4OCwzLjI2IGMgLTAuMTE2MiwwLjMzIC0wLjIyMTIsMC44NTUgLTAuMjIxMiwwLjg1NSBsIC0wLjAxNiwwIGMgMCwwIC0wLjEwNzUsLTAuNTI1IC0wLjIyMzgsLTAuODU1IGwgLTEuMTE4NywtMy4yNiBjIC0wLjEzMTMsLTAuMzY4OCAtMC4yOCwtMC40NzYzIC0wLjY5MTMsLTAuNDc2MyBsIC0wLjY4MzcsMCAwLDAuOTEyNSAwLjE1LDAgYyAwLjE0LDAgMC4yMDUsMC4wNDEgMC4yNTM3LDAuMTgxMyBsIDEuNzUyNSw0Ljc0ODcgMS4xMzYzLDAgMS43NDUsLTQuNzQ4NyBjIDAuMDQ5LC0wLjE0IDAuMTE1LC0wLjE4MTMgMC4yNTUsLTAuMTgxMyBsIDAuMTU2MiwwIDAsLTAuOTEyNSAtMC42OTEyLDAgYyAtMC40MTEzLDAgLTAuNTUxMywwLjEwNzUgLTAuNjgzOCwwLjQ3NjMgbSAtOC4wMzk1LDEuMDcxNyBjIC0xLjI2LDAgLTIuMTMyNSwwLjkwMzggLTIuMTMyNSwyLjE5NzUgMCwxLjE5MzggMC44NjUsMi4xOTYzIDIuMjU2MywyLjE5NjMgMS4wNDUsMCAxLjY4NSwtMC42MzM4IDEuNjg1LC0wLjYzMzggbCAtMC40MzUsLTAuNzIyNSBjIDAsMCAtMC41MDEzLDAuNDY3NSAtMS4xNzYzLDAuNDY3NSAtMC42MzM3LDAgLTEuMTc3NSwtMC4zODYyIC0xLjI2LC0xLjEyODcgbCAyLjg5NjMsMCBjIDAsMCAwLjAyNSwtMC4yNjI1IDAuMDI1LC0wLjM4NSAwLC0xLjExMTMgLTAuNjU3NSwtMS45OTEzIC0xLjg1ODgsLTEuOTkxMyBtIC0xLjAzLDEuNjU1IGMgMC4xMTUsLTAuNTI4NyAwLjQ5MzgsLTAuODQ4NyAxLjAzLC0wLjg0ODcgMC40Mjc1LDAgMC43NzM4LDAuMzQ1IDAuNzksMC44NDg3IGwgLTEuODIsMCB6IG0gLTIuNjM0NywxLjU3MTggYyAwLDAuMTIyNSAtMC4wNjYsMC4xOCAtMC4xODI1LDAuMTggbCAtMC45MjEzLDAgYyAtMC4yNzI1LDAgLTAuMzk1LDAuMDI1IC0wLjM5NSwwLjAyNSBsIDAsLTAuMDE2IGMgMCwwIDAuMTY1LC0wLjE1NzUgMC4zNTM4LC0wLjM4NzUgbCAxLjkzMzcsLTIuMzYyNSAwLC0wLjU2NjIgLTMuMDc3NSwwIGMgLTAuMzk1LDAgLTAuNTU4NywwLjE3MTIgLTAuNTU4NywwLjU1ODcgbCAwLDAuNzQ4OCAwLjk0NSwwIDAsLTAuMjQgYyAwLC0wLjExMzggMC4wNjYsLTAuMTggMC4xODEyLC0wLjE4IGwgMC43NTc1LDAgYyAwLjI2MzgsMCAwLjM4NzUsLTAuMDE2IDAuMzg3NSwtMC4wMTYgbCAwLDAuMDE2IGMgMCwwIC0wLjE2NSwwLjE0ODcgLTAuMzUzNywwLjM4NjIgbCAtMS45MzM4LDIuMzYyNSAwLDAuNTU4OCAzLjI1ODgsMCBjIDAuMzg2MiwwIDAuNTUxMiwtMC4xNjM4IDAuNTUxMiwtMC41NTg4IGwgMCwtMC43NCAtMC45NDYyLDAgMCwwLjIzMTMgeiBtIC05LjU0MzEsMC4wMSAwLC0xLjU2NSBjIDAsLTAuOTM3NSAtMC40MTEzLC0xLjY3IC0xLjgxLC0xLjY3IC0wLjQzNzUsMCAtMS41Mzg4LDAuMDgyIC0xLjUzODgsMC44NjM3IGwgMCwwLjQ0NSAwLjk3LDAgMCwtMC4yMjI1IGMgMCwtMC4yMzEyIDAuMzcxMywtMC4yOCAwLjU2LC0wLjI4IDAuNTM2MywwIDAuNzczOCwwLjIyMjUgMC43NzM4LDAuODIzOCBsIDAsMC4wMzMgLTAuMTMxMywwIGMgLTAuNjgzNywwIC0yLjQ5MzcsMC4xMDc1IC0yLjQ5MzcsMS40MjM3IDAsMC44Mzg4IDAuNjgyNSwxLjMwODggMS40MzEyLDEuMzA4OCAwLjk0NzUsMCAxLjI2ODgsLTAuNzQxMyAxLjI2ODgsLTAuNzQxMyBsIDAuMDE2LDAgYyAwLDAgLTAuMDEsMC4wNzQgLTAuMDEsMC4xODEzIDAsMC4yNDYyIDAuMTQ3NSwwLjQ2IDAuNTMzOCwwLjQ2IGwgMC45Mzc1LDAgMCwtMC44Nzg4IC0wLjMyODgsMCBjIC0wLjExNSwwIC0wLjE4MTIsLTAuMDY2IC0wLjE4MTIsLTAuMTgxMiBtIC0xLjAyNzUsLTAuNzU4OCBjIDAsMC41MTEzIC0wLjM5NjMsMS4xMDUgLTAuOTU2MywxLjEwNSAtMC40Mjc1LDAgLTAuNjMzNywtMC4yNjUgLTAuNjMzNywtMC41NDUgMCwtMC41ODM3IDAuODY1LC0wLjY1ODcgMS40MDg3LC0wLjY1ODcgbCAwLjE4MTMsMCAwLDAuMDk5IHogbSAyNS40ODAxLDAuNzU4OCAwLC0yLjU3NjMgYyAwLC0wLjM4NzUgLTAuMTYzOCwtMC41NTg3IC0wLjU1LC0wLjU1ODcgbCAtMC45OTUsMCAwLDAuODg3NSAwLjMyNzUsMCBjIDAuMTE2MiwwIDAuMTgyNSwwLjA1NiAwLjE4MjUsMC4xOCBsIDAsMi41Njg3IGMgMCwwLjM5NSAwLjE2MzcsMC41NTg4IDAuNTUsMC41NTg4IGwgMC45OTUsMCAwLC0wLjg3ODggLTAuMzI3NSwwIGMgLTAuMTE2MywwIC0wLjE4MjUsLTAuMDY2IC0wLjE4MjUsLTAuMTgxMiIKICAgICBzdHlsZT0iZmlsbDojM2MzYzNiO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIgogICAgIGlkPSJwYXRoNDYxNSIgLz4KICA8cGF0aAogICAgIGQ9Im0gNzQuMDkzNDksMzQuMDAyMyAzLjE4NzUsMCAwLC04LjYyMzcgYyAwLC0xLjMzNjMgLTAuNTcsLTEuOTA1IC0xLjkzNSwtMS45MDUgbCAtMy4yNzM4LDAgMCwzLjE1NzUgMS4yMjUsMCBjIDAuMzk3NSwwIDAuNjI1LDAuMiAwLjYyNSwwLjYyNjIgbCAwLDEuNTA4OCBjIDAsMCAtMS45MDYyLDIuMTA2MiAtNS4xMjI1LDIuMTA2MiAtMy42MTM3LDAgLTYuNjMsLTIuNzA1IC02LjYzLC03LjExNSAwLC00LjA5ODcgMi45ODc1LC02Ljg2IDYuNDg4OCwtNi44NiAzLjA3MjUsMCA1LjE3ODcsMS43OTM4IDUuMTc4NywxLjc5MzggbCAyLjEwNjMsLTIuNjc1IGMgMCwwIC0yLjQyLC0yLjU2MTMgLTcuMzcsLTIuNTYxMyAtNS44NjI1LDAgLTEwLjI3MzgsNC41MjUgLTEwLjI3MzgsMTAuMzMxMyAwLDYuNTE3NSA0LjUyNSwxMC41NTc1IDkuODE3NSwxMC41NTc1IDMuNzg1LDAgNS45NDc1LC0yLjE2MjUgNS45NDc1LC0yLjE2MjUgbCAwLjA1NiwwIGMgMCwwIC0wLjAyNywwLjQyNzUgLTAuMDI3LDAuODUzNyBsIDAsMC45Njc1IHogbSAxMy43MDk0LDAuMzQxMSBjIDMuNjEzNywwIDUuODMzNywtMi4xOSA1LjgzMzcsLTIuMTkgbCAtMS41MDg3LC0yLjUwNjIgYyAwLDAgLTEuNzM1LDEuNjIzNyAtNC4wNjg4LDEuNjIzNyAtMi4xOTEyLDAgLTQuMDcsLTEuMzM4NyAtNC4zNTM3LC0zLjkgbCAxMC4wMTYyLDAgYyAwLDAgMC4wODYsLTAuOTEgMC4wODYsLTEuMzM3NSAwLC0zLjg0MjUgLTIuMjc3NSwtNi44ODc1IC02LjQzMTMsLTYuODg3NSAtNC4zNTUsMCAtNy4zNzEyLDMuMTMxMyAtNy4zNzEyLDcuNTk4OCAwLDQuMTI3NSAyLjk4ODcsNy41OTg3IDcuNzk3NSw3LjU5ODcgbSAtMC40MjYzLC0xMi40MDc1IGMgMS40OCwwIDIuNjczOCwxLjE5NSAyLjczMTMsMi45MzEzIGwgLTYuMjg4OCwwIGMgMC4zOTc1LC0xLjgyMTMgMS43MDc1LC0yLjkzMTMgMy41NTc1LC0yLjkzMTMgbSAzMC44NjY1LDAuNjI1NSAwLC0zLjA3MzcgLTIuNDc1LDAgYyAtMS4xOTUsMCAtMS43NjUsMC4zNyAtMi4wNDg3LDEuNDggbCAtMi4xMDUsOC4wNTM3IGMgLTAuMiwwLjc2ODggLTAuMjg1LDEuNTM3NSAtMC4yODUsMS41Mzc1IGwgLTAuMDU3LDAgYyAwLDAgLTAuMDg2LC0wLjc2ODcgLTAuMzEzOCwtMS41Mzc1IGwgLTIuNzAzNywtOS40NzYyIC0zLjE4NjMsMCAtMi42NzUsOS40NzYyIGMgLTAuMjI3NSwwLjc2ODggLTAuMzQxMiwxLjUzNzUgLTAuMzQxMiwxLjUzNzUgbCAtMC4wNTgsMCBjIDAsMCAtMC4wODUsLTAuNzY4NyAtMC4yODUsLTEuNTM3NSBsIC0yLjEzMzgsLTguMDUzNyBjIC0wLjI4NSwtMS4xMSAtMC44NTM3LC0xLjQ4IC0yLjA0ODcsLTEuNDggbCAtMi40NzYzLDAgMCwzLjA3MzcgMC4zOTg4LDAgYyAwLjQyNjIsMCAwLjY1NSwwLjA4NiAwLjc5NzUsMC41MTI1IGwgMy40NzEyLDEwLjkyODggNC4wOTc1LDAgMi40NDg4LC04LjI4MTMgYyAwLjIyNjIsLTAuNzcgMC4zNjg3LC0xLjU2NjIgMC4zNjg3LC0xLjU2NjIgbCAwLjA1OCwwIGMgMCwwIDAuMTEyNSwwLjc5NjIgMC4zNDEzLDEuNTY2MiBsIDIuNDc1LDguMjgxMyA0LjA3LDAgMy40NzEyLC0xMC45Mjg4IGMgMC4xNywtMC40MjYyIDAuMzcsLTAuNTEyNSAwLjc5NjMsLTAuNTEyNSBsIDAuMzk4NywwIHogbSAxNi42Nzc1LDQuMTgzOCBjIDAsLTQuNDQgLTMuNTI4NywtNy41OTg4IC03Ljk2ODcsLTcuNTk4OCAtNC40MSwwIC03LjkzODgsMy4xNTg4IC03LjkzODgsNy41OTg4IDAsNC40Njg3IDMuNTI4OCw3LjU5ODcgNy45Mzg4LDcuNTk4NyA0LjQ0LDAgNy45Njg3LC0zLjEzIDcuOTY4NywtNy41OTg3IG0gLTcuOTY4Nyw0LjUyNSBjIC0yLjMzMjUsMCAtNC4yOTYzLC0xLjgyMTMgLTQuMjk2MywtNC41MjUgMCwtMi42NzUgMS45NjM4LC00LjUyNjMgNC4yOTYzLC00LjUyNjMgMi4zNjEyLDAgNC4zMjYyLDEuODUxMyA0LjMyNjIsNC41MjYzIDAsMi43MDM3IC0xLjk2NSw0LjUyNSAtNC4zMjYyLDQuNTI1IG0gNTQuNDMwNiwtMTEuNzg0OSBjIC0xLjEzODgsMCAtMS41OTM4LDAuNjgyNSAtMS41OTM4LDEuMzM3NSBsIDAsMC4zNyAtMC4wNTcsMCBjIDAsMCAtMS4xMSwtMi4wNDg3IC00LjQ2NzUsLTIuMDQ4NyAtNC4xODI1LDAgLTYuNDMxMiwzLjI0MzcgLTYuNDMxMiw3LjIyODcgMCwzLjk4NSAyLjM2MTIsNy4zNDI1IDYuNTE2Miw3LjM0MjUgMS45MzUsMCAzLjE4NzUsLTAuNjU1IDQuMDQxMywtMS44Nzg3IGwgMC4wNTcsMCBjIDAsMCAtMC4wMjksMC40Mjc1IC0wLjAyOSwwLjc2NzUgbCAwLDAuNjgzNyBjIDAsMi42MTg4IC0xLjkwNjMsMy41NTg4IC00LjA5NzUsMy41NTg4IC0yLjIyLDAgLTQuMDEyNSwtMC45Njc1IC00LjAxMjUsLTAuOTY3NSBsIC0xLjExLDIuODQ2MiBjIDEuMzkzNywwLjczODggMy4zMywxLjI1MTMgNS4xNSwxLjI1MTMgMy43ODUsMCA3LjY1NSwtMS44Nzc1IDcuNjU1LC02Ljg1ODggbCAwLC05Ljk5IGMgMCwtMC4zNjg3IDAuMjU2MiwtMC41Njg3IDAuNjI2MiwtMC41Njg3IGwgMS4xMSwwIDAsLTMuMDczOCAtMy4zNTc1LDAgeiBtIC01LjI2NSwxMS4xODUgYyAtMi4zMzI1LDAgLTMuNjEzOCwtMS44Nzg3IC0zLjYxMzgsLTQuNDExMiAwLC0yLjQ0NzUgMS4xOTUsLTQuMDQxMyAzLjM4NjMsLTQuMDQxMyAxLjk2MzcsMCAzLjYxMzcsMC44ODI1IDMuNjEzNyw0LjE4MzggMCwzLjI3MTIgLTEuNjUsNC4yNjg3IC0zLjM4NjIsNC4yNjg3IG0gLTkuOTcxNSwtMC4zNDE2IDAsLTUuNDA3NSBjIDAsLTMuMjQ1IC0xLjQ0MzgsLTUuNzc3NSAtNi4zNTM4LC01Ljc3NzUgLTEuNTMsMCAtNS40MDEyLDAuMjg1IC01LjQwMTIsMi45ODg3IGwgMCwxLjUzNzUgMy40MDg3LDAgMCwtMC43Njg3IGMgMCwtMC43OTc1IDEuMywtMC45Njg4IDEuOTYzOCwtMC45Njg4IDEuODc3NSwwIDIuNzE1LDAuNzY4OCAyLjcxNSwyLjg0NjMgbCAwLDAuMTEzNyAtMC40NjEzLDAgYyAtMi4zOTg3LDAgLTguNzUyNSwwLjM3IC04Ljc1MjUsNC45MjM4IDAsMi45MDI1IDIuMzk2Myw0LjUyNjIgNS4wMjYzLDQuNTI2MiAzLjMyMTIsMCA0LjQ0NzUsLTIuNTYyNSA0LjQ0NzUsLTIuNTYyNSBsIDAuMDU3LDAgYyAwLDAgLTAuMDI5LDAuMjU3NSAtMC4wMjksMC42MjYzIDAsMC44NTM3IDAuNTIsMS41OTM3IDEuODc3NSwxLjU5MzcgbCAzLjI5MjUsMCAwLC0zLjA0NSAtMS4xNTUsMCBjIC0wLjQwNSwwIC0wLjYzNjMsLTAuMjI3NSAtMC42MzYzLC0wLjYyNjIgbSAtMy42MSwtMi42MTg4IGMgMCwxLjc2NSAtMS4zODYyLDMuODEzOCAtMy4zNSwzLjgxMzggLTEuNTAyNSwwIC0yLjIyMzcsLTAuOTEgLTIuMjIzNywtMS44Nzg4IDAsLTIuMDIgMy4wMzEyLC0yLjI3NjIgNC45Mzg3LC0yLjI3NjIgbCAwLjYzNSwwIDAsMC4zNDEyIHogbSAtMjEuOTA1Miw2LjI4OTkgMCwtMC43NCBjIDAsLTAuNTcgLTAuMDU4LC0wLjk2NzUgLTAuMDU4LC0wLjk2NzUgbCAwLjA1OCwwIGMgMCwwIDEuMzA4NywyLjA0ODggNC4zMjUsMi4wNDg4IDMuODQxMiwwIDYuNjU4NywtMi45ODc1IDYuNjU4NywtNy41OTg4IDAsLTQuNDk2MiAtMi41MDM3LC03LjU5ODcgLTYuNDMxMiwtNy41OTg3IC0zLjA3MzgsMCAtNC4zNTM4LDIuMDIxMiAtNC4zNTM4LDIuMDIxMiBsIC0wLjA1NiwwIGMgMCwwIDAuMDU2LC0wLjUxMjUgMC4wNTYsLTEuMjIzNyBsIDAsLTQuMjExMyBjIDAsLTEuMzM4NyAtMC41OTc1LC0xLjkzNjIgLTEuOTM1LC0xLjkzNjIgbCAtMy40NDM3LDAgMCwzLjA3MzcgMS4xMzg3LDAgYyAwLjM5ODgsMCAwLjYyNjMsMC4xOTg4IDAuNjI2MywwLjYyNjMgbCAwLDE2LjUwNjIgMy40MTUsMCB6IG0gMy43Mjg3LC0xMS43NTM3IGMgMi4xMzI1LDAgMy42MTM4LDEuNzkzNyAzLjYxMzgsNC41NTM3IDAsMi44NzM4IC0xLjY4LDQuNDk2MyAtMy42NDM4LDQuNDk2MyAtMi40MTg3LDAgLTMuNjEzNywtMi4yMiAtMy42MTM3LC00LjQ2NzUgMCwtMy4yMTYzIDEuNzY1LC00LjU4MjUgMy42NDM3LC00LjU4MjUiCiAgICAgc3R5bGU9ImZpbGw6IzNjM2MzYjtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIKICAgICBpZD0icGF0aDQ2NDMiIC8+CiAgPHBhdGgKICAgICBpZD0icGF0aDQ2NDciCiAgICAgc3R5bGU9ImZpbGw6Izc4Mzk2ODtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIKICAgICBkPSJtIDIzLjI0MjEyLDMzLjgzODEgMTEuNjIyNSwtNi43Njc1IC0xMS42MjUsLTYuNzY3NSAtMTEuNjIsNi43Njc1IDExLjYyMjUsNi43Njc1IHoiIC8+CiAgPHBhdGgKICAgICBpZD0icGF0aDQ2NTEiCiAgICAgc3R5bGU9ImZpbGw6I2ZmZGQwMDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIKICAgICBkPSJtIDQ2LjQ4NDA5LDIwLjMwMjUgMCwtMTMuNTM1IEwgMzQuODYxNjIsMCAyMy4yNDAzNyw2Ljc2NzUgbCAwLDAuMDEgMTEuNjIxMjUsNi43Njc1IDAsMTMuNTMgMTEuNjIyNDcsLTYuNzY3NSB6IiAvPgogIDxwYXRoCiAgICAgaWQ9InBhdGg0NjU1IgogICAgIHN0eWxlPSJmaWxsOiNlMzA2MTM7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOm5vbnplcm87c3Ryb2tlOm5vbmUiCiAgICAgZD0ibSAyMy4yNDAyNSwyMC4zMDI1IDExLjYyMjUsNi43Njc1IDAsLTEzLjUzIC0xMS42MjI1LC02Ljc2ODcgMCwxMy41MzEyIHoiIC8+CiAgPHBhdGgKICAgICBpZD0icGF0aDQ2NTkiCiAgICAgc3R5bGU9ImZpbGw6I2U4MzM2MztmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6bm9uemVybztzdHJva2U6bm9uZSIKICAgICBkPSJtIDIzLjI0MDI1LDIwLjMwMjUgLTExLjYyMjUsNi43Njc1IDAsLTEzLjUzIDExLjYyMjUsLTYuNzY4NyAwLDEzLjUzMTIgeiIgLz4KICA8cGF0aAogICAgIGlkPSJwYXRoNDY2MyIKICAgICBzdHlsZT0iZmlsbDojNDFjMGYwO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIgogICAgIGQ9Im0gMzQuODYyMzcsNDAuNjAxIC0xMS42MjI1LDYuNzY2MyAwLC0xMy41Mjg4IDExLjYyMjUsLTYuNzY4NyAwLDEzLjUzMTIgeiIgLz4KICA8cGF0aAogICAgIGlkPSJwYXRoNDY2NyIKICAgICBzdHlsZT0iZmlsbDojMDA5ZjY3O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIgogICAgIGQ9Im0gMTEuNjE4MzcsNDAuNjAxIDExLjYyMjUsNi43NjYzIDAsLTEzLjUyODggLTExLjYyMjUsLTYuNzY4NyAwLDEzLjUzMTIgeiIgLz4KICA8cGF0aAogICAgIGlkPSJwYXRoNDY3MSIKICAgICBzdHlsZT0iZmlsbDojNGJiMTY2O2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpub256ZXJvO3N0cm9rZTpub25lIgogICAgIGQ9Im0gMCwzMy44MjY2IDAsMTMuNTM2MyAxMS42MjI1LDYuNzY2MiAxMS42MTc1LC02Ljc2NSAtMTEuNjE3NSwtNi43NjUgMCwtMTMuNTM2MiAwLjAwNCwwIC0wLjAwNCwwIEwgMCwzMy44MjY2IFoiIC8+Cjwvc3ZnPgo8IS0tIHZlcnNpb246IDIwMTcxMjIzLCBvcmlnaW5hbCBzaXplOiAxODQuNzM5NCA1NC4xMjkxMDEsIGJvcmRlcjogMyUgLS0+Cg==" alt="Gewobag Logo"></div>
+  <div class="app-title">
+    <h1>Urlaubsplaner</h1>
+    <div class="sub">Unverbindliche Vorplanung von Abwesenheiten im Team. Der offizielle Antrag erfolgt im ESS.</div>
+  </div>
+</header>
+
+<div class="demo noprint" role="region" aria-label="Demo-Steuerung">
+  <span class="badge warn">▲ Prototyp mit fiktiven Daten</span>
+  <label for="selUser">Angemeldet als (Demo):</label>
+  <select id="selUser"></select>
+  <span class="hint">Eingaben gehen beim Neuladen verloren. Bitte keine echten Namen oder Daten eintragen.</span>
+</div>
+
+<main>
+  <nav class="tabs" role="tablist" aria-label="Bereiche" id="tabs"></nav>
+  <div class="status-line" id="statusLine" role="status" aria-live="polite"></div>
+  <section id="panel" role="tabpanel" tabindex="-1"></section>
+</main>
+
+<div class="wrap-footer">
+<footer class="app-footer">
+  <span><span class="class-badge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.1 · Stand 16.11.2026</span>
+  <span>Grundlage: Lastenheft Urlaubsplaner, Entwurf 0.1</span>
+</footer>
+</div>
+
+<!-- Dialog: Abwesenheit -->
+<dialog id="dlgAbw" aria-labelledby="dlgAbwTitel">
+  <form id="frmAbw" novalidate>
+    <div class="dlg-body">
+      <h2 id="dlgAbwTitel">Abwesenheit planen</h2>
+      <div class="fld">
+        <label class="lbl" for="fArt">Art</label>
+        <select id="fArt" required></select>
+      </div>
+      <div class="grid2">
+        <div class="fld">
+          <label class="lbl" for="fVon">Von</label>
+          <input type="date" id="fVon" required>
+        </div>
+        <div class="fld">
+          <label class="lbl" for="fBis">Bis</label>
+          <input type="date" id="fBis" required>
+        </div>
+      </div>
+      <div class="fld">
+        <label class="lbl" for="fStatus">Status</label>
+        <select id="fStatus"></select>
+        <p class="hint">Den Status setzt du selbst. So siehst du, was noch im ESS beantragt werden muss.</p>
+      </div>
+      <div id="abwPruefung" aria-live="polite"></div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="secondary left" id="btnLoeschen">Löschen</button>
+      <button type="button" class="secondary" id="btnAbbrechen">Abbrechen</button>
+      <button type="submit" class="primary" id="btnSpeichern">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Dialog: Outlook -->
+<dialog id="dlgIcs" aria-labelledby="dlgIcsTitel">
+  <form id="frmIcs">
+    <div class="dlg-body">
+      <h2 id="dlgIcsTitel">In Outlook übernehmen</h2>
+      <p id="icsInfo"></p>
+      <div class="fld">
+        <label class="lbl" for="fShowAs">Im Kalender anzeigen als</label>
+        <select id="fShowAs">
+          <option value="tentative">Mit Vorbehalt (empfohlen für Planungen)</option>
+          <option value="free">Frei</option>
+          <option value="oof">Abwesend</option>
+        </select>
+      </div>
+      <ul class="msg" id="icsHinweise"></ul>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="secondary" id="btnIcsAbbrechen">Abbrechen</button>
+      <button type="submit" class="primary">Kalenderdatei herunterladen</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+'use strict';
+
+/* =========================================================
+   Fachliche Konstanten (Prototyp, fiktive Daten)
+   ========================================================= */
+const MONATE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const WT = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const STATUS = {
+  idee: {txt:'Idee', sym:'○', badge:'neutral'},
+  ess:  {txt:'Im ESS beantragt', sym:'→', badge:'warn'},
+  gen:  {txt:'Genehmigt', sym:'✓', badge:'ok'}
+};
+const SICHT = {voll:'mit Art', abw:'nur „abwesend“'};
+const FARBE_VERDECKT = '#C9C9C4';
+
+const ORG = [
+  {id:'A21',   kuerzel:'21',    name:'Abteilung 21', typ:'Abteilung', parent:null},
+  {id:'T2110', kuerzel:'21.10', name:'PPM',          typ:'Team',      parent:'A21', min:3},
+  {id:'T2120', kuerzel:'21.20', name:'PM',           typ:'Team',      parent:'A21', min:2}
+];
+
+const PERSONEN = [
+  {id:'p1',  name:'Alex Beispiel',     team:'T2110', rollen:['ma','fk'], fuehrt:['T2110'], info:'Teamleitung 21.10'},
+  {id:'p2',  name:'Bo Muster',         team:'T2110', rollen:['ma'], info:'Mitarbeiter*in 21.10'},
+  {id:'p3',  name:'Chris Probe',       team:'T2110', rollen:['ma']},
+  {id:'p4',  name:'Dana Test',         team:'T2110', rollen:['ma']},
+  {id:'p5',  name:'Eli Fiktiv',        team:'T2110', rollen:['ma']},
+  {id:'p6',  name:'Fritzi Demo',       team:'T2110', rollen:['ma']},
+  {id:'p7',  name:'Kim Leitung',       team:'A21',   rollen:['ma','fk'], fuehrt:['A21'], info:'Abteilungsleitung 21'},
+  {id:'p8',  name:'Gerd Exempel',      team:'T2120', rollen:['ma','fk'], fuehrt:['T2120'], info:'Teamleitung 21.20'},
+  {id:'p9',  name:'Hanna Platzhalter', team:'T2120', rollen:['ma']},
+  {id:'p10', name:'Ines Muster',       team:'T2120', rollen:['ma']},
+  {id:'p11', name:'Jona Beispiel',     team:'T2120', rollen:['ma']},
+  {id:'adm', name:'Fachadministration',team:null,    rollen:['admin'], info:'nur Stammdaten'}
+];
+
+const ARTEN_START = [
+  {id:'U',  bez:'Urlaub',               farbe:'#BFEFFA', urlaub:true,  sichtTeam:'voll', sichtFk:'voll', aktiv:true},
+  {id:'G',  bez:'Gleittag',             farbe:'#CDEBD5', urlaub:false, sichtTeam:'voll', sichtFk:'voll', aktiv:true},
+  {id:'S',  bez:'Schulung/Fortbildung', farbe:'#FFEBA8', urlaub:false, sichtTeam:'voll', sichtFk:'voll', aktiv:true},
+  {id:'D',  bez:'Dienstreise',          farbe:'#DCD3F2', urlaub:false, sichtTeam:'voll', sichtFk:'voll', aktiv:true},
+  {id:'SU', bez:'Sonderurlaub',         farbe:'#F9D2DC', urlaub:false, sichtTeam:'voll', sichtFk:'voll', aktiv:true},
+  {id:'EZ', bez:'Elternzeit',           farbe:'#E2E2DE', urlaub:false, sichtTeam:'abw',  sichtFk:'voll', aktiv:true},
+  {id:'R',  bez:'Reha',                 farbe:'#E2E2DE', urlaub:false, sichtTeam:'abw',  sichtFk:'abw',  aktiv:true},
+  {id:'A',  bez:'Sonstige Abwesenheit', farbe:'#E2E2DE', urlaub:false, sichtTeam:'abw',  sichtFk:'abw',  aktiv:true}
+];
+
+const HEUTE = heuteIso();
+const JAHR = Number(HEUTE.slice(0,4));
+const PLAN_MIN = JAHR + '-01-01';
+const PLAN_MAX = (JAHR + 1) + '-12-31';
+
+/* Zustand: nur im Arbeitsspeicher, bewusst ohne Browser-Speicher */
+let seq = 100;
+const state = {
+  user: 'p2',
+  tab: 'kal',
+  team: null,
+  ansicht: 'monat',
+  darstellung: window.matchMedia('(max-width: 700px)').matches ? 'liste' : 'matrix',
+  start: monatsanfang(HEUTE),
+  planFilter: 'alle',
+  kontoJahr: JAHR + 1,
+  feiertagJahr: JAHR + 1,
+  arten: ARTEN_START.map(a => Object.assign({}, a)),
+  org: ORG.map(o => Object.assign({}, o)),
+  sondertage: [
+    {id:'s1', datum:'2026-12-24', bez:'Betrieblich frei (Heiligabend)'},
+    {id:'s2', datum:'2026-12-31', bez:'Betrieblich frei (Silvester)'},
+    {id:'s3', datum:'2027-12-24', bez:'Betrieblich frei (Heiligabend)'},
+    {id:'s4', datum:'2027-12-31', bez:'Betrieblich frei (Silvester)'}
+  ],
+  zeitraeume: [
+    {id:'z1', bez:'SAP-Upgrade (Beispiel)',               typ:'sperr', von:'2027-03-15', bis:'2027-03-19', geltung:'A21'},
+    {id:'z2', bez:'Jahresabschluss (Beispiel)',           typ:'sperr', von:'2027-01-04', bis:'2027-01-15', geltung:'T2120'},
+    {id:'z3', bez:'Sommerferien Berlin (Beispieldaten)',  typ:'info',  von:'2027-07-08', bis:'2027-08-20', geltung:null},
+    {id:'z4', bez:'Herbstferien Berlin (Beispieldaten)',  typ:'info',  von:'2027-10-11', bis:'2027-10-23', geltung:null}
+  ],
+  abw: [
+    {id:'a1',  person:'p1',  art:'U',  von:'2027-07-12', bis:'2027-07-23', status:'ess'},
+    {id:'a2',  person:'p1',  art:'U',  von:'2027-12-20', bis:'2027-12-23', status:'idee'},
+    {id:'a3',  person:'p2',  art:'U',  von:'2027-05-03', bis:'2027-05-07', status:'idee'},
+    {id:'a4',  person:'p2',  art:'G',  von:'2027-02-12', bis:'2027-02-12', status:'ess'},
+    {id:'a5',  person:'p2',  art:'U',  von:'2027-10-11', bis:'2027-10-22', status:'idee'},
+    {id:'a6',  person:'p2',  art:'U',  von:'2026-08-03', bis:'2026-08-21', status:'gen'},
+    {id:'a7',  person:'p2',  art:'U',  von:'2026-12-28', bis:'2026-12-30', status:'gen'},
+    {id:'a8',  person:'p3',  art:'U',  von:'2027-07-19', bis:'2027-08-06', status:'ess'},
+    {id:'a9',  person:'p4',  art:'R',  von:'2027-09-06', bis:'2027-09-24', status:'gen'},
+    {id:'a10', person:'p5',  art:'EZ', von:'2027-04-01', bis:'2027-06-30', status:'gen'},
+    {id:'a11', person:'p6',  art:'S',  von:'2027-03-16', bis:'2027-03-18', status:'gen'},
+    {id:'a12', person:'p6',  art:'U',  von:'2027-07-21', bis:'2027-07-30', status:'idee'},
+    {id:'a13', person:'p8',  art:'U',  von:'2027-12-27', bis:'2027-12-30', status:'idee'},
+    {id:'a14', person:'p9',  art:'U',  von:'2027-08-09', bis:'2027-08-20', status:'ess'},
+    {id:'a15', person:'p10', art:'SU', von:'2027-08-11', bis:'2027-08-11', status:'idee'},
+    {id:'a16', person:'p11', art:'U',  von:'2027-08-02', bis:'2027-08-13', status:'ess'},
+    {id:'a17', person:'p7',  art:'U',  von:'2027-06-14', bis:'2027-06-25', status:'idee'}
+  ],
+  konten: {
+    'p2|2026':  {anspruch:30, rest:2, geaendert:'2026-01-12'},
+    'p1|2027':  {anspruch:30, rest:3, geaendert:'2026-11-02'},
+    'p3|2027':  {anspruch:30, rest:0, geaendert:'2026-11-05'},
+    'p6|2027':  {anspruch:28, rest:5, geaendert:'2026-11-09'},
+    'p7|2027':  {anspruch:30, rest:6, geaendert:'2026-11-03'},
+    'p8|2027':  {anspruch:30, rest:1, geaendert:'2026-11-04'},
+    'p9|2027':  {anspruch:30, rest:2, geaendert:'2026-11-06'},
+    'p11|2027': {anspruch:24, rest:0, geaendert:'2026-11-06'}
+  }
+};
+
+/* =========================================================
+   Datumsfunktionen (UTC, ISO-Strings JJJJ-MM-TT)
+   ========================================================= */
+function heuteIso(){ const n = new Date(); return iso(new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()))); }
+function dt(s){ const p = s.split('-').map(Number); return new Date(Date.UTC(p[0], p[1]-1, p[2])); }
+function iso(d){ return d.toISOString().slice(0,10); }
+function plus(s, n){ const d = dt(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
+function wochentag(s){ return dt(s).getUTCDay(); }
+function monatsanfang(s){ return s.slice(0,8) + '01'; }
+function monatPlus(s, n){ const d = dt(s); return iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1))); }
+function monatsende(s){ const d = dt(s); return iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0))); }
+function tage(von, bis){ const r = []; for (let t = von; t <= bis; t = plus(t, 1)) r.push(t); return r; }
+function fmt(s){ return s.slice(8,10) + '.' + s.slice(5,7) + '.' + s.slice(0,4); }
+function fmtKurz(s){ return s.slice(8,10) + '.' + s.slice(5,7) + '.'; }
+function zeitraumText(von, bis){ return von === bis ? fmt(von) : (von.slice(0,4) === bis.slice(0,4) ? fmtKurz(von) + '–' + fmt(bis) : fmt(von) + '–' + fmt(bis)); }
+
+/* Gesetzliche Feiertage Berlin. Im Prototyp selbst berechnet (Gaußsche Osterformel),
+   in der echten Anwendung über eine etablierte Bibliothek (Lastenheft, Abschnitt 7). */
+function ostersonntag(y){
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31), tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return iso(new Date(Date.UTC(y, monat - 1, tag)));
+}
+const feiertagCache = {};
+function feiertage(y){
+  if (feiertagCache[y]) return feiertagCache[y];
+  const o = ostersonntag(y), m = new Map();
+  m.set(y + '-01-01', 'Neujahr');
+  m.set(y + '-03-08', 'Internationaler Frauentag');
+  m.set(plus(o, -2), 'Karfreitag');
+  m.set(plus(o, 1), 'Ostermontag');
+  m.set(y + '-05-01', 'Tag der Arbeit');
+  m.set(plus(o, 39), 'Christi Himmelfahrt');
+  m.set(plus(o, 50), 'Pfingstmontag');
+  m.set(y + '-10-03', 'Tag der Deutschen Einheit');
+  m.set(y + '-12-25', '1. Weihnachtstag');
+  m.set(y + '-12-26', '2. Weihnachtstag');
+  feiertagCache[y] = m;
+  return m;
+}
+function feiertag(s){ return feiertage(Number(s.slice(0,4))).get(s) || null; }
+function sondertag(s){ const x = state.sondertage.find(z => z.datum === s); return x ? x.bez : null; }
+function istWochenende(s){ const w = wochentag(s); return w === 0 || w === 6; }
+function istArbeitstag(s){ return !istWochenende(s) && !feiertag(s) && !sondertag(s); }
+function arbeitstage(von, bis, jahr){
+  let n = 0;
+  for (const t of tage(von, bis)) if (istArbeitstag(t) && (!jahr || t.startsWith(jahr + '-'))) n++;
+  return n;
+}
+function tagKlasse(s){
+  if (feiertag(s)) return 'fe';
+  if (sondertag(s)) return 'so';
+  if (istWochenende(s)) return 'we';
+  return '';
+}
+
+/* =========================================================
+   Stammdaten und Rechte
+   ========================================================= */
+const person = id => PERSONEN.find(p => p.id === id);
+const org = id => state.org.find(o => o.id === id);
+const art = id => state.arten.find(a => a.id === id);
+const ich = () => person(state.user);
+const hat = (u, r) => u.rollen.includes(r);
+function teamName(id){ const o = org(id); return o ? o.kuerzel + ' ' + o.name : ''; }
+function mitglieder(teamId){ return PERSONEN.filter(p => p.team === teamId); }
+
+function fuehrtTeam(u, teamId){
+  if (!u.fuehrt) return false;
+  const t = org(teamId);
+  return u.fuehrt.includes(teamId) || (t && u.fuehrt.includes(t.parent));
+}
+function sichtbareTeams(u){
+  const s = [];
+  if (u.team && org(u.team) && org(u.team).typ === 'Team') s.push(u.team);
+  for (const f of (u.fuehrt || [])) {
+    const o = org(f);
+    if (o.typ === 'Team') { if (!s.includes(f)) s.push(f); }
+    else state.org.filter(x => x.parent === f && x.typ === 'Team').forEach(x => { if (!s.includes(x.id)) s.push(x.id); });
+  }
+  return s;
+}
+function gefuehrteTeams(u){ return sichtbareTeams(u).filter(t => fuehrtTeam(u, t)); }
+
+/* Was sieht Person u von Abwesenheit a? (Lastenheft, Abschnitte 6 und 8) */
+function darstellung(u, a){
+  const ar = art(a.art);
+  if (a.person === u.id) return {code: ar.id, label: ar.bez, farbe: ar.farbe, status: true};
+  const fk = fuehrtTeam(u, person(a.person).team);
+  const sicht = fk ? ar.sichtFk : ar.sichtTeam;
+  if (sicht === 'voll') return {code: ar.id, label: ar.bez, farbe: ar.farbe, status: fk};
+  return {code: '–', label: 'abwesend', farbe: FARBE_VERDECKT, status: fk};
+}
+function zeitraeumeFuer(teamId){
+  const t = org(teamId);
+  return state.zeitraeume.filter(z => !z.geltung || z.geltung === teamId || (t && z.geltung === t.parent));
+}
+function abwVon(pid){ return state.abw.filter(a => a.person === pid); }
+function abwAmTag(pid, t){ return state.abw.find(a => a.person === pid && a.von <= t && a.bis >= t) || null; }
+
+/* Urlaubskonto */
+function konto(pid, jahr){ return state.konten[pid + '|' + jahr] || null; }
+function geplant(pid, jahr, ohneId){
+  const r = {gesamt:0, idee:0, ess:0, gen:0};
+  for (const a of abwVon(pid)) {
+    if (a.id === ohneId || !art(a.art).urlaub) continue;
+    const n = arbeitstage(a.von, a.bis, jahr);
+    r.gesamt += n; r[a.status] += n;
+  }
+  return r;
+}
+function verfuegbar(pid, jahr){
+  const k = konto(pid, jahr);
+  if (!k) return null;
+  return k.anspruch + k.rest - geplant(pid, jahr).gesamt;
+}
+
+/* =========================================================
+   Hilfsfunktionen Oberfläche
+   ========================================================= */
+function esc(v){
+  return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function zahl(n){ return String(n).replace('.', ','); }
+function statusBadge(s){ const x = STATUS[s]; return `<span class="badge ${x.badge}">${x.sym} ${esc(x.txt)}</span>`; }
+function meldung(text){
+  const el = document.getElementById('statusLine');
+  el.textContent = text;
+  clearTimeout(meldung.t);
+  meldung.t = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+function bereiche(ranges){
+  /* fasst sortierte Tage zu lesbaren Bereichen zusammen (über arbeitsfreie Tage hinweg) */
+  const out = []; let start = null, last = null;
+  for (const t of ranges) {
+    if (start && tage(plus(last, 1), t).slice(0, -1).every(x => !istArbeitstag(x))) { last = t; continue; }
+    if (start) out.push(zeitraumText(start, last));
+    start = t; last = t;
+  }
+  if (start) out.push(zeitraumText(start, last));
+  return out;
+}
+
+/* =========================================================
+   Navigation
+   ========================================================= */
+function tabsFuer(u){
+  const t = [];
+  if (hat(u, 'ma')) t.push(['kal', 'Teamkalender'], ['plan', 'Meine Planung'], ['konto', 'Mein Urlaubskonto']);
+  if (hat(u, 'fk')) t.push(['tkonten', 'Urlaubskonten Team']);
+  if (hat(u, 'admin')) t.push(['verw', 'Verwaltung']);
+  return t;
+}
+function renderUserSelect(){
+  const sel = document.getElementById('selUser');
+  sel.innerHTML = PERSONEN.map(p => {
+    const zus = p.info || (p.team ? 'Mitarbeiter*in ' + org(p.team).kuerzel : '');
+    return `<option value="${p.id}">${esc(p.name)}${zus ? ' (' + esc(zus) + ')' : ''}</option>`;
+  }).join('');
+  sel.value = state.user;
+}
+function render(){
+  const u = ich();
+  const tabs = tabsFuer(u);
+  if (!tabs.some(t => t[0] === state.tab)) state.tab = tabs[0][0];
+  document.getElementById('tabs').innerHTML = tabs.map(t =>
+    `<button type="button" role="tab" id="tab-${t[0]}" aria-controls="panel" aria-selected="${t[0] === state.tab}" tabindex="${t[0] === state.tab ? 0 : -1}" data-action="tab" data-tab="${t[0]}">${esc(t[1])}</button>`
+  ).join('');
+  const panel = document.getElementById('panel');
+  panel.setAttribute('aria-labelledby', 'tab-' + state.tab);
+  panel.innerHTML = ({kal: panelKalender, plan: panelPlanung, konto: panelKonto, tkonten: panelTeamKonten, verw: panelVerwaltung})[state.tab](u);
+}
+
+/* =========================================================
+   Teamkalender
+   ========================================================= */
+function periode(){
+  if (state.ansicht === 'jahr') { const y = state.start.slice(0,4); return [y + '-01-01', y + '-12-31']; }
+  const n = state.ansicht === 'quartal' ? 3 : 1;
+  return [state.start, monatsende(monatPlus(state.start, n - 1))];
+}
+function periodeText(von, bis){
+  if (state.ansicht === 'jahr') return 'Jahr ' + von.slice(0,4);
+  const a = dt(von), b = dt(bis);
+  const t1 = MONATE[a.getUTCMonth()] + ' ' + a.getUTCFullYear();
+  return state.ansicht === 'monat' ? t1 : t1 + ' bis ' + MONATE[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
+}
+function panelKalender(u){
+  const teams = sichtbareTeams(u);
+  if (!teams.length) return '<p>Für deine Rolle ist kein Team sichtbar.</p>';
+  if (!teams.includes(state.team)) state.team = teams[0];
+  const [von, bis] = periode();
+  const darfPlanen = u.team && org(u.team);
+  let h = `<h2>Teamkalender</h2>
+  <div class="toolbar">
+    <div class="fld"><label class="lbl" for="selTeam">Team</label>
+      <select id="selTeam" data-change="team">${teams.map(t => `<option value="${t}"${t === state.team ? ' selected' : ''}>${esc(teamName(t))}</option>`).join('')}</select></div>
+    <div class="fld"><label class="lbl" for="selAnsicht">Zeitraum</label>
+      <select id="selAnsicht" data-change="ansicht">
+        ${[['monat','Monat'],['quartal','Quartal'],['jahr','Jahr']].map(o => `<option value="${o[0]}"${o[0] === state.ansicht ? ' selected' : ''}>${o[1]}</option>`).join('')}
+      </select></div>
+    <div class="fld"><label class="lbl" for="selDarst">Darstellung</label>
+      <select id="selDarst" data-change="darstellung">
+        <option value="matrix"${state.darstellung === 'matrix' ? ' selected' : ''}>Kalender</option>
+        <option value="liste"${state.darstellung === 'liste' ? ' selected' : ''}>Liste</option>
+      </select></div>
+    <div class="btnrow">
+      <button type="button" class="secondary" data-action="nav" data-dir="-1" aria-label="Vorheriger Zeitraum">‹ Zurück</button>
+      <button type="button" class="secondary" data-action="heute">Heute</button>
+      <button type="button" class="secondary" data-action="planjahr">Planungsjahr ${JAHR + 1}</button>
+      <button type="button" class="secondary" data-action="nav" data-dir="1" aria-label="Nächster Zeitraum">Weiter ›</button>
+    </div>
+    <div class="grow"></div>
+    ${darfPlanen ? '<button type="button" class="primary" data-action="neu">+ Abwesenheit planen</button>' : ''}
+  </div>
+  <p class="periode">${esc(periodeText(von, bis))} · ${esc(teamName(state.team))}</p>`;
+  h += state.darstellung === 'matrix' ? matrix(u, state.team, von, bis) : liste(u, state.team, von, bis);
+  h += legende(u);
+  return h;
+}
+function sortierteMitglieder(teamId, u){
+  return mitglieder(teamId).slice().sort((a, b) => (a.id === u.id ? -1 : b.id === u.id ? 1 : a.name.localeCompare(b.name, 'de')));
+}
+function unterbesetzt(teamId, t){
+  const m = mitglieder(teamId), min = org(teamId).min || 0;
+  const da = m.filter(p => !abwAmTag(p.id, t)).length;
+  return {da, n: m.length, min, unter: da < min};
+}
+function matrix(u, teamId, von, bis){
+  const ts = tage(von, bis);
+  const ms = sortierteMitglieder(teamId, u);
+  const zr = zeitraeumeFuer(teamId).filter(z => z.bis >= von && z.von <= bis);
+  const monate = [];
+  for (const t of ts) { const k = t.slice(0,7); const l = monate[monate.length - 1]; if (l && l.k === k) l.n++; else monate.push({k, n:1}); }
+  const hz = t => (t === HEUTE ? ' heute' : '');
+  let h = `<div class="kal-wrap" role="region" aria-label="Teamkalender ${esc(teamName(teamId))}" tabindex="0"><table class="kal"><thead><tr><th class="name" rowspan="2" scope="col">Person</th>`;
+  h += monate.map(m => `<th colspan="${m.n}" scope="colgroup">${MONATE[Number(m.k.slice(5,7)) - 1]} ${m.k.slice(0,4)}</th>`).join('');
+  h += '</tr><tr>';
+  h += ts.map(t => {
+    const f = feiertag(t), s = sondertag(t);
+    const mark = f ? 'FT' : s ? 'BT' : WT[wochentag(t)];
+    const titel = WT[wochentag(t)] + ' ' + fmt(t) + (f ? ' · Feiertag: ' + f : '') + (s ? ' · ' + s : '');
+    return `<th scope="col" class="${tagKlasse(t)}${hz(t)}" title="${esc(titel)}">${Number(t.slice(8))}<small>${mark}</small></th>`;
+  }).join('');
+  h += '</tr></thead><tbody>';
+  for (const z of zr) {
+    const sym = z.typ === 'sperr' ? '▲' : 'i';
+    h += `<tr class="zr"><th class="name" scope="row" title="${esc(z.bez)}">${sym} ${esc(z.bez)}</th>`;
+    h += ts.map(t => (t >= z.von && t <= z.bis)
+      ? `<td class="${z.typ}${hz(t)}" title="${esc(z.bez + ': ' + zeitraumText(z.von, z.bis))}">${sym}</td>`
+      : `<td class="${tagKlasse(t)}${hz(t)}"></td>`).join('');
+    h += '</tr>';
+  }
+  for (const p of ms) {
+    const own = p.id === u.id;
+    h += `<tr><th class="name${own ? ' own' : ''}" scope="row">${esc(p.name)}${own ? ' (ich)' : ''}</th>`;
+    for (const t of ts) {
+      const a = abwAmTag(p.id, t);
+      const ownAttr = own ? ` data-own="1" data-date="${t}"${a ? ` data-id="${a.id}" tabindex="0" role="button"` : ''}` : '';
+      if (a && istArbeitstag(t)) {
+        const v = darstellung(u, a);
+        const idee = v.status && a.status === 'idee' ? ' idee' : '';
+        const titel = `${p.name}: ${v.label} (${zeitraumText(a.von, a.bis)})${v.status ? ' · ' + STATUS[a.status].txt : ''}`;
+        h += `<td class="abw${idee}${hz(t)}" style="background:${v.farbe}" title="${esc(titel)}" aria-label="${esc(fmt(t) + ', ' + titel)}"${ownAttr}>${esc(v.code)}</td>`;
+      } else {
+        h += `<td class="${tagKlasse(t)}${hz(t)}"${ownAttr}></td>`;
+      }
+    }
+    h += '</tr>';
+  }
+  const min = org(teamId).min || 0;
+  h += `<tr class="anw"><th class="name" scope="row">Anwesend (min. ${min})</th>`;
+  h += ts.map(t => {
+    if (!istArbeitstag(t)) return `<td class="${tagKlasse(t)}${hz(t)}"></td>`;
+    const x = unterbesetzt(teamId, t);
+    const titel = `${fmt(t)}: ${x.da} von ${x.n} anwesend` + (x.unter ? `, Mindestbesetzung ${x.min} unterschritten` : '');
+    return `<td class="${x.unter ? 'unter' : ''}${hz(t)}" title="${esc(titel)}">${x.da}${x.unter ? '!' : ''}</td>`;
+  }).join('');
+  h += '</tr></tbody></table></div>';
+  if (ms.some(p => p.id === u.id)) h += '<p class="hint noprint">Tipp: Klick auf einen Tag in deiner Zeile legt dort eine Abwesenheit an. Ein Klick auf einen Eintrag öffnet ihn zum Bearbeiten.</p>';
+  return h;
+}
+function liste(u, teamId, von, bis){
+  const ms = sortierteMitglieder(teamId, u);
+  let rows = '';
+  for (const p of ms) {
+    const eintr = abwVon(p.id).filter(a => a.bis >= von && a.von <= bis).sort((a, b) => a.von.localeCompare(b.von));
+    for (const a of eintr) {
+      const v = darstellung(u, a);
+      rows += `<tr><td>${esc(p.name)}${p.id === u.id ? ' (ich)' : ''}</td>
+        <td><span class="sw" style="background:${v.farbe}">${esc(v.code)}</span>${esc(v.label)}</td>
+        <td>${esc(zeitraumText(a.von, a.bis))}</td>
+        <td class="num">${arbeitstage(a.von, a.bis)}</td>
+        <td>${v.status ? statusBadge(a.status) : ''}</td>
+        <td>${p.id === u.id ? `<button type="button" class="link" data-action="edit" data-id="${a.id}">Bearbeiten</button>` : ''}</td></tr>`;
+    }
+  }
+  const engpass = tage(von, bis).filter(t => istArbeitstag(t) && unterbesetzt(teamId, t).unter);
+  let h = '';
+  if (engpass.length) h += `<ul class="msg"><li class="crit">▲ Mindestbesetzung (${org(teamId).min}) unterschritten: ${esc(bereiche(engpass).join(', '))}</li></ul>`;
+  const zr = zeitraeumeFuer(teamId).filter(z => z.bis >= von && z.von <= bis);
+  if (zr.length) h += '<ul class="msg">' + zr.map(z => `<li class="${z.typ === 'sperr' ? 'warn' : 'info'}">${z.typ === 'sperr' ? '▲ Sperrzeit' : 'i Info'}: ${esc(z.bez)}, ${esc(zeitraumText(z.von, z.bis))}</li>`).join('') + '</ul>';
+  h += `<div class="scroll"><table><thead><tr><th>Person</th><th>Art</th><th>Zeitraum</th><th class="num">Arbeitstage</th><th>Status</th><th><span class="sr-only">Aktion</span></th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6">Im gewählten Zeitraum ist niemand abwesend geplant.</td></tr>'}</tbody></table></div>`;
+  return h;
+}
+function legende(u){
+  const arten = state.arten.filter(a => a.aktiv && a.sichtTeam === 'voll');
+  return `<div class="legend" aria-label="Legende">
+    ${arten.map(a => `<span><span class="sw" style="background:${a.farbe}">${a.id}</span>${esc(a.bez)}</span>`).join('')}
+    <span><span class="sw" style="background:${FARBE_VERDECKT}">–</span>abwesend (Art nicht sichtbar)</span>
+    <span><span class="sw idee" style="background:#fff">U</span>Status Idee (nur für dich und Führungskraft)</span>
+    <span><span class="sw" style="background:#E9E9E5">FT</span>Feiertag Berlin</span>
+    <span><span class="sw" style="background:#E9E9E5">BT</span>Betrieblicher Sondertag</span>
+    <span><span class="sw" style="background:var(--crit-bg);color:var(--crit-fg)">▲</span>Sperrzeit</span>
+    <span><span class="sw" style="background:#E5F7FC">i</span>Info (z. B. Schulferien)</span>
+    <span><span class="sw" style="background:var(--crit-bg);color:var(--crit-fg)">2!</span>Mindestbesetzung unterschritten</span>
+  </div>`;
+}
+
+/* =========================================================
+   Meine Planung
+   ========================================================= */
+function panelPlanung(u){
+  let eigene = abwVon(u.id).slice().sort((a, b) => a.von.localeCompare(b.von));
+  const offen = eigene.filter(a => a.status === 'idee').length;
+  if (state.planFilter === 'offen') eigene = eigene.filter(a => a.status === 'idee');
+  const rows = eigene.map(a => {
+    const ar = art(a.art);
+    return `<tr>
+      <td>${esc(zeitraumText(a.von, a.bis))}</td>
+      <td><span class="sw" style="background:${ar.farbe}">${ar.id}</span>${esc(ar.bez)}</td>
+      <td class="num">${arbeitstage(a.von, a.bis)}</td>
+      <td><label class="sr-only" for="st-${a.id}">Status</label>
+        <select id="st-${a.id}" data-change="status" data-id="${a.id}">${Object.keys(STATUS).map(s => `<option value="${s}"${s === a.status ? ' selected' : ''}>${STATUS[s].sym} ${STATUS[s].txt}</option>`).join('')}</select></td>
+      <td><button type="button" class="link" data-action="edit" data-id="${a.id}">Bearbeiten</button>
+          <button type="button" class="link" data-action="ics" data-id="${a.id}">In Outlook</button></td></tr>`;
+  }).join('');
+  return `<h2>Meine Planung</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Einträge</div><div class="v">${abwVon(u.id).length}</div></div>
+    <div class="kpi"><div class="l">Noch nicht im ESS beantragt</div><div class="v">${offen}</div></div>
+    <div class="kpi"><div class="l">Geplante Urlaubstage ${JAHR + 1}</div><div class="v">${geplant(u.id, JAHR + 1).gesamt}</div></div>
+  </div>
+  ${offen ? `<ul class="msg"><li class="warn">▲ ${offen} ${offen === 1 ? 'Eintrag ist' : 'Einträge sind'} noch nicht im ESS beantragt. Die Planung hier ersetzt den Antrag nicht.</li></ul>` : ''}
+  <div class="toolbar">
+    <div class="fld"><label class="lbl" for="selFilter">Anzeigen</label>
+      <select id="selFilter" data-change="planFilter">
+        <option value="alle"${state.planFilter === 'alle' ? ' selected' : ''}>Alle Einträge</option>
+        <option value="offen"${state.planFilter === 'offen' ? ' selected' : ''}>Nur noch nicht im ESS beantragt</option>
+      </select></div>
+    <div class="grow"></div>
+    <button type="button" class="primary" data-action="neu">+ Abwesenheit planen</button>
+  </div>
+  <div class="scroll"><table><thead><tr><th>Zeitraum</th><th>Art</th><th class="num">Arbeitstage</th><th>Status</th><th>Aktionen</th></tr></thead>
+  <tbody>${rows || '<tr><td colspan="5">Keine Einträge.</td></tr>'}</tbody></table></div>`;
+}
+
+/* =========================================================
+   Urlaubskonto
+   ========================================================= */
+function vorschlag(pid, jahr){
+  const vor = konto(pid, jahr - 1);
+  if (!vor) return {anspruch: 30, rest: 0, quelle: false};
+  return {anspruch: vor.anspruch, rest: Math.max(0, verfuegbar(pid, jahr - 1)), quelle: true};
+}
+function kontoKpis(pid, jahr){
+  const k = konto(pid, jahr), g = geplant(pid, jahr), v = verfuegbar(pid, jahr);
+  return `<div class="kpis">
+    <div class="kpi"><div class="l">Gesamt (Anspruch + Rest)</div><div class="v">${zahl(k.anspruch + k.rest)}</div></div>
+    <div class="kpi"><div class="l">Geplant</div><div class="v">${g.gesamt}</div></div>
+    <div class="kpi"><div class="l">Verfügbar / Übertrag</div><div class="v${v < 0 ? ' crit' : ''}">${v < 0 ? '▲ ' : ''}${zahl(v)}</div></div>
+    <div class="kpi"><div class="l">davon im ESS beantragt</div><div class="v">${g.ess}</div></div>
+    <div class="kpi"><div class="l">davon genehmigt</div><div class="v">${g.gen}</div></div>
+    <div class="kpi"><div class="l">davon Idee</div><div class="v">${g.idee}</div></div>
+  </div>`;
+}
+function panelKonto(u){
+  const jahr = state.kontoJahr, k = konto(u.id, jahr);
+  let h = `<h2>Mein Urlaubskonto</h2>
+  <div class="openbox">Eigene Angaben zur Planung. Maßgeblich sind die Werte im ESS. Sichtbar für dich und deine Führungskraft.</div>
+  <div class="toolbar" style="margin-top:12px">
+    <div class="fld"><label class="lbl" for="selKJahr">Jahr</label>
+      <select id="selKJahr" data-change="kontoJahr">${[JAHR, JAHR + 1].map(y => `<option${y === jahr ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
+  </div>`;
+  if (!k) {
+    const v = vorschlag(u.id, jahr);
+    h += `<div class="card">
+      <h3 style="margin-top:0">Für ${jahr} ist noch kein Konto angelegt</h3>
+      <p>${v.quelle ? `Vorschlag aus ${jahr - 1}: Anspruch <strong>${zahl(v.anspruch)}</strong> Tage, Rest (Übertrag ${jahr - 1}) <strong>${zahl(v.rest)}</strong> Tage.`
+        : `Es gibt kein Konto aus ${jahr - 1}. Vorschlag: Anspruch <strong>30</strong> Tage, Rest <strong>0</strong> Tage.`} Du kannst die Werte danach korrigieren.</p>
+      <button type="button" class="primary" data-action="kontoAnlegen" data-a="${v.anspruch}" data-r="${v.rest}">Vorschlag übernehmen</button>
+    </div>`;
+    return h;
+  }
+  h += `<div class="card">
+    <div class="grid2">
+      <div class="fld"><label class="lbl" for="kAnspruch">Anspruch ${jahr} (Tage)</label>
+        <input type="number" id="kAnspruch" min="0" max="60" step="0.5" value="${k.anspruch}" data-change="konto" data-feld="anspruch"></div>
+      <div class="fld"><label class="lbl" for="kRest">Rest aus ${jahr - 1} (Tage)</label>
+        <input type="number" id="kRest" min="0" max="60" step="0.5" value="${k.rest}" data-change="konto" data-feld="rest"></div>
+    </div>
+    <p class="hint">Zuletzt geändert am ${fmt(k.geaendert)}. Gezählt werden nur Arbeitstage der Art Urlaub, ohne Wochenenden, Feiertage und betriebliche Sondertage.</p>
+  </div>` + kontoKpis(u.id, jahr);
+  if (verfuegbar(u.id, jahr) < 0) h += '<ul class="msg"><li class="crit">▲ Du hast mehr Urlaub geplant als verfügbar.</li></ul>';
+  return h;
+}
+function panelTeamKonten(u){
+  const jahr = state.kontoJahr;
+  let h = `<h2>Urlaubskonten Team</h2>
+  <div class="openbox">Nur lesend. Die Werte pflegen die Kolleg*innen selbst. Maßgeblich ist das ESS. Nicht zur Leistungs- oder Verhaltensbewertung verwenden.</div>
+  <div class="toolbar" style="margin-top:12px">
+    <div class="fld"><label class="lbl" for="selTKJahr">Jahr</label>
+      <select id="selTKJahr" data-change="kontoJahr">${[JAHR, JAHR + 1].map(y => `<option${y === jahr ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
+  </div>`;
+  for (const t of gefuehrteTeams(u)) {
+    const rows = sortierteMitglieder(t, u).map(p => {
+      const k = konto(p.id, jahr);
+      if (!k) return `<tr><td>${esc(p.name)}</td><td colspan="5"><span class="badge neutral">○ Noch kein Konto angelegt</span></td></tr>`;
+      const g = geplant(p.id, jahr), v = verfuegbar(p.id, jahr);
+      return `<tr><td>${esc(p.name)}</td><td class="num">${zahl(k.anspruch)}</td><td class="num">${zahl(k.rest)}</td>
+        <td class="num">${g.gesamt}</td><td class="num">${v < 0 ? '<span class="badge crit">▲ ' + zahl(v) + '</span>' : zahl(v)}</td>
+        <td class="num">${g.ess} / ${g.gen}</td></tr>`;
+    }).join('');
+    h += `<h3>${esc(teamName(t))}</h3><div class="scroll"><table><thead><tr><th>Person</th><th class="num">Anspruch</th><th class="num">Rest</th><th class="num">Geplant</th><th class="num">Verfügbar</th><th class="num">ESS / genehmigt</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  return h;
+}
+
+/* =========================================================
+   Verwaltung (Fachadministration, ohne Planungsdaten)
+   ========================================================= */
+function panelVerwaltung(){
+  const teams = state.org.filter(o => o.typ === 'Team');
+  const sonder = state.sondertage.slice().sort((a, b) => a.datum.localeCompare(b.datum));
+  const zr = state.zeitraeume.slice().sort((a, b) => a.von.localeCompare(b.von));
+  const fy = state.feiertagJahr;
+  const geltungOpt = sel => ['', ...state.org.map(o => o.id)].map(id => `<option value="${id}"${id === (sel || '') ? ' selected' : ''}>${id ? esc(teamName(id)) : 'Alle'}</option>`).join('');
+  return `<h2>Verwaltung</h2>
+  <p class="hint">Die Fachadministration pflegt nur Stammdaten. Planungen und Urlaubskonten sind für diese Rolle nicht sichtbar.</p>
+  <div class="admin-grid">
+    <div class="card">
+      <h3 style="margin-top:0">Mindestbesetzung je Team</h3>
+      <table><thead><tr><th>Team</th><th class="num">Mitglieder</th><th>Mindestens anwesend</th></tr></thead><tbody>
+      ${teams.map(t => `<tr><td>${esc(teamName(t.id))}</td><td class="num">${mitglieder(t.id).length}</td>
+        <td><label class="sr-only" for="min-${t.id}">Mindestbesetzung ${esc(teamName(t.id))}</label>
+        <input type="number" id="min-${t.id}" min="0" max="${mitglieder(t.id).length}" value="${t.min || 0}" data-change="min" data-id="${t.id}"></td></tr>`).join('')}
+      </tbody></table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Betriebliche Sondertage</h3>
+      <table><thead><tr><th>Datum</th><th>Bezeichnung</th><th><span class="sr-only">Aktion</span></th></tr></thead><tbody>
+      ${sonder.map(s => `<tr><td>${WT[wochentag(s.datum)]} ${fmt(s.datum)}</td><td>${esc(s.bez)}</td>
+        <td><button type="button" class="link" data-action="delSonder" data-id="${s.id}">Entfernen</button></td></tr>`).join('') || '<tr><td colspan="3">Keine Einträge.</td></tr>'}
+      </tbody></table>
+      <form class="inline-form" data-form="sonder">
+        <div class="fld"><label class="lbl" for="nsDatum">Datum</label><input type="date" id="nsDatum" required></div>
+        <div class="fld"><label class="lbl" for="nsBez">Bezeichnung</label><input type="text" id="nsBez" maxlength="60" required></div>
+        <button type="submit" class="secondary">Hinzufügen</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Sperr- und Infozeiträume</h3>
+      <div class="scroll"><table><thead><tr><th>Bezeichnung</th><th>Typ</th><th>Zeitraum</th><th>Gilt für</th><th><span class="sr-only">Aktion</span></th></tr></thead><tbody>
+      ${zr.map(z => `<tr><td>${esc(z.bez)}</td><td>${z.typ === 'sperr' ? '<span class="badge warn">▲ Sperrzeit</span>' : '<span class="badge neutral">i Info</span>'}</td>
+        <td>${esc(zeitraumText(z.von, z.bis))}</td><td>${z.geltung ? esc(teamName(z.geltung)) : 'Alle'}</td>
+        <td><button type="button" class="link" data-action="delZr" data-id="${z.id}">Entfernen</button></td></tr>`).join('') || '<tr><td colspan="5">Keine Einträge.</td></tr>'}
+      </tbody></table></div>
+      <form class="inline-form" data-form="zr">
+        <div class="fld"><label class="lbl" for="nzBez">Bezeichnung</label><input type="text" id="nzBez" maxlength="60" required></div>
+        <div class="fld"><label class="lbl" for="nzTyp">Typ</label><select id="nzTyp"><option value="sperr">Sperrzeit</option><option value="info">Info</option></select></div>
+        <div class="fld"><label class="lbl" for="nzVon">Von</label><input type="date" id="nzVon" required></div>
+        <div class="fld"><label class="lbl" for="nzBis">Bis</label><input type="date" id="nzBis" required></div>
+        <div class="fld"><label class="lbl" for="nzGeltung">Gilt für</label><select id="nzGeltung">${geltungOpt('')}</select></div>
+        <button type="submit" class="secondary">Hinzufügen</button>
+      </form>
+      <p class="hint">Schulferien werden in Version 1 per CSV-Import eingespielt. Im Prototyp sind sie Beispieldaten.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Gesetzliche Feiertage Berlin (berechnet)</h3>
+      <div class="toolbar"><div class="fld"><label class="lbl" for="selFJahr">Jahr</label>
+        <select id="selFJahr" data-change="feiertagJahr">${[JAHR, JAHR + 1, JAHR + 2].map(y => `<option${y === fy ? ' selected' : ''}>${y}</option>`).join('')}</select></div></div>
+      <table><thead><tr><th>Datum</th><th>Feiertag</th></tr></thead><tbody>
+      ${[...feiertage(fy).entries()].sort((a, b) => a[0].localeCompare(b[0])).map(e => `<tr><td>${WT[wochentag(e[0])]} ${fmt(e[0])}</td><td>${esc(e[1])}${istWochenende(e[0]) ? ' <span class="badge neutral">Wochenende</span>' : ''}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3 style="margin-top:0">Abwesenheitsarten</h3>
+    <div class="scroll"><table><thead><tr><th>Kürzel</th><th>Bezeichnung</th><th>Zählt als Urlaub</th><th>Sichtbar für Team</th><th>Sichtbar für Führungskraft</th><th>Aktiv</th></tr></thead><tbody>
+    ${state.arten.map(a => `<tr>
+      <td><span class="sw" style="background:${a.farbe}">${a.id}</span></td><td>${esc(a.bez)}</td><td>${a.urlaub ? '✓ ja' : 'nein'}</td>
+      <td><label class="sr-only" for="sT-${a.id}">Sichtbarkeit Team ${esc(a.bez)}</label><select id="sT-${a.id}" data-change="sicht" data-id="${a.id}" data-feld="sichtTeam">${Object.keys(SICHT).map(s => `<option value="${s}"${s === a.sichtTeam ? ' selected' : ''}>${SICHT[s]}</option>`).join('')}</select></td>
+      <td><label class="sr-only" for="sF-${a.id}">Sichtbarkeit Führungskraft ${esc(a.bez)}</label><select id="sF-${a.id}" data-change="sicht" data-id="${a.id}" data-feld="sichtFk">${Object.keys(SICHT).map(s => `<option value="${s}"${s === a.sichtFk ? ' selected' : ''}>${SICHT[s]}</option>`).join('')}</select></td>
+      <td><input type="checkbox" aria-label="${esc(a.bez)} aktiv" ${a.aktiv ? 'checked' : ''} data-change="aktiv" data-id="${a.id}"></td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="hint">Arten mit Einträgen werden nur deaktiviert, nicht gelöscht. Inaktive Arten stehen bei neuen Planungen nicht mehr zur Auswahl.</p>
+  </div>`;
+}
+
+/* =========================================================
+   Dialog Abwesenheit
+   ========================================================= */
+let editId = null;
+const $ = id => document.getElementById(id);
+
+function oeffneAbw(id, datum){
+  const u = ich();
+  const a = id ? state.abw.find(x => x.id === id && x.person === u.id) : null;
+  if (id && !a) return;
+  editId = a ? a.id : null;
+  const arten = state.arten.filter(x => x.aktiv || (a && x.id === a.art));
+  $('fArt').innerHTML = arten.map(x => `<option value="${x.id}">${x.id} – ${esc(x.bez)}</option>`).join('');
+  $('fStatus').innerHTML = Object.keys(STATUS).map(s => `<option value="${s}">${STATUS[s].sym} ${STATUS[s].txt}</option>`).join('');
+  let start = datum || (HEUTE < (JAHR + 1) + '-01-01' ? (JAHR + 1) + '-01-04' : HEUTE);
+  $('fArt').value = a ? a.art : 'U';
+  $('fVon').value = a ? a.von : start;
+  $('fBis').value = a ? a.bis : start;
+  $('fStatus').value = a ? a.status : 'idee';
+  for (const f of ['fVon', 'fBis']) { $(f).min = PLAN_MIN; $(f).max = PLAN_MAX; }
+  $('dlgAbwTitel').textContent = a ? 'Abwesenheit bearbeiten' : 'Abwesenheit planen';
+  $('btnLoeschen').hidden = !a;
+  pruefeAnzeigen();
+  $('dlgAbw').showModal();
+}
+
+function pruefe(){
+  const u = ich();
+  const r = {fehler: [], hinweise: [], info: [], tage: 0};
+  const von = $('fVon').value, bis = $('fBis').value, ar = art($('fArt').value);
+  if (!von || !bis) { r.fehler.push('Bitte Von und Bis angeben.'); return r; }
+  if (bis < von) { r.fehler.push('Das Enddatum liegt vor dem Startdatum.'); return r; }
+  if (von < PLAN_MIN || bis > PLAN_MAX) { r.fehler.push(`Planung ist für ${JAHR} und ${JAHR + 1} möglich.`); return r; }
+  r.tage = arbeitstage(von, bis);
+  if (r.tage === 0) r.fehler.push('Der Zeitraum enthält keine Arbeitstage.');
+  for (const a of abwVon(u.id)) {
+    if (a.id !== editId && a.von <= bis && a.bis >= von)
+      r.fehler.push(`Überschneidung mit deiner Planung „${art(a.art).bez}“ ${zeitraumText(a.von, a.bis)}.`);
+  }
+  const team = u.team && org(u.team);
+  if (team) {
+    for (const z of zeitraeumeFuer(u.team).filter(z => z.typ === 'sperr' && z.von <= bis && z.bis >= von))
+      r.hinweise.push(`Fällt in die Sperrzeit „${z.bez}“ (${zeitraumText(z.von, z.bis)}). Bitte mit dem Team abstimmen.`);
+    if (team.typ === 'Team' && team.min) {
+      const ms = mitglieder(u.team);
+      const engpass = tage(von, bis).filter(t => {
+        if (!istArbeitstag(t)) return false;
+        const wegAndere = ms.filter(p => p.id !== u.id && abwAmTag(p.id, t)).length;
+        return ms.length - wegAndere - 1 < team.min;
+      });
+      if (engpass.length) r.hinweise.push(`Die Mindestbesetzung im Team (${team.min}) wäre an ${engpass.length} Arbeitstag${engpass.length === 1 ? '' : 'en'} unterschritten: ${bereiche(engpass).join(', ')}.`);
+    }
+  }
+  if (ar.urlaub) {
+    for (const y of [...new Set([von.slice(0,4), bis.slice(0,4)])].map(Number)) {
+      const k = konto(u.id, y);
+      if (!k) { r.info.push(`Für ${y} ist noch kein Urlaubskonto angelegt.`); continue; }
+      const rest = k.anspruch + k.rest - geplant(u.id, y, editId).gesamt - arbeitstage(von, bis, y);
+      if (rest < 0) r.hinweise.push(`Dein Urlaubskonto ${y} läge danach bei ${zahl(rest)} Tagen.`);
+      else r.info.push(`Urlaubskonto ${y} danach: ${zahl(rest)} Tage verfügbar.`);
+    }
+  }
+  if (ar.sichtTeam !== 'voll') r.info.push('Kolleg*innen sehen bei dieser Art nur „abwesend“.');
+  return r;
+}
+function pruefeAnzeigen(){
+  const r = pruefe();
+  let h = `<p><strong>${r.tage} Arbeitstag${r.tage === 1 ? '' : 'e'}</strong> <span class="hint">(ohne Wochenenden, Feiertage und betriebliche Sondertage)</span></p><ul class="msg">`;
+  h += r.fehler.map(t => `<li class="crit">✕ ${esc(t)}</li>`).join('');
+  h += r.hinweise.map(t => `<li class="warn">▲ ${esc(t)}</li>`).join('');
+  h += r.info.map(t => `<li class="info">i ${esc(t)}</li>`).join('');
+  $('abwPruefung').innerHTML = h + '</ul>';
+  return r;
+}
+function speichereAbw(e){
+  e.preventDefault();
+  const r = pruefeAnzeigen();
+  if (r.fehler.length) { $('abwPruefung').querySelector('.crit').scrollIntoView({block: 'nearest'}); return; }
+  const daten = {art: $('fArt').value, von: $('fVon').value, bis: $('fBis').value, status: $('fStatus').value};
+  if (editId) Object.assign(state.abw.find(a => a.id === editId), daten);
+  else state.abw.push(Object.assign({id: 'a' + (++seq), person: state.user}, daten));
+  $('dlgAbw').close();
+  meldung(r.hinweise.length ? 'Gespeichert, mit Hinweisen.' : 'Gespeichert.');
+  render();
+}
+function loescheAbw(){
+  if (!editId || !confirm('Diese Planung wirklich löschen? Einen Termin in Outlook musst du selbst löschen.')) return;
+  state.abw = state.abw.filter(a => !(a.id === editId && a.person === state.user));
+  $('dlgAbw').close();
+  meldung('Gelöscht.');
+  render();
+}
+
+/* =========================================================
+   Outlook: Kalenderdatei (.ics, RFC 5545)
+   ========================================================= */
+let icsId = null;
+function oeffneIcs(id){
+  const a = state.abw.find(x => x.id === id && x.person === state.user);
+  if (!a) return;
+  icsId = id;
+  const ar = art(a.art), sensibel = ar.sichtTeam !== 'voll';
+  $('icsInfo').textContent = `${ar.bez}, ${zeitraumText(a.von, a.bis)}`;
+  $('fShowAs').value = 'tentative';
+  $('icsHinweise').innerHTML =
+    (sensibel ? '<li class="info">i Betreff im Kalender: nur „Abwesend“, Termin als privat markiert.</li>' : '') +
+    '<li class="info">i Die Datei öffnet sich in Outlook. Dort speichern. Spätere Änderungen hier musst du in Outlook selbst nachziehen.</li>';
+  $('dlgIcs').showModal();
+}
+function icsText(s){ return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
+function icsFalten(zeile){
+  /* RFC 5545: Zeilen höchstens 75 Byte, an Zeichengrenzen falten */
+  const enc = new TextEncoder(), teile = [];
+  let akt = '', bytes = 0;
+  for (const z of zeile) {
+    const n = enc.encode(z).length;
+    if (bytes + n > 73) { teile.push(akt); akt = ''; bytes = 0; }
+    akt += z; bytes += n;
+  }
+  teile.push(akt);
+  return teile.join('\r\n ');
+}
+function erzeugeIcs(a, showAs){
+  const ar = art(a.art), sensibel = ar.sichtTeam !== 'voll';
+  const stempel = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const busy = {tentative: 'TENTATIVE', free: 'FREE', oof: 'OOF'}[showAs];
+  const zeilen = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gewobag//Urlaubsplaner Prototyp//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    'UID:' + a.id + '-' + a.von + '@urlaubsplaner.prototyp',
+    'DTSTAMP:' + stempel,
+    'DTSTART;VALUE=DATE:' + a.von.replace(/-/g, ''),
+    'DTEND;VALUE=DATE:' + plus(a.bis, 1).replace(/-/g, ''),
+    'SUMMARY:' + icsText(sensibel ? 'Abwesend' : ar.bez + ' (Planung)'),
+    'DESCRIPTION:' + icsText('Unverbindliche Planung aus dem Urlaubsplaner. Maßgeblich ist der Antrag im ESS.'),
+    'CLASS:' + (sensibel ? 'PRIVATE' : 'PUBLIC'),
+    'TRANSP:' + (showAs === 'free' ? 'TRANSPARENT' : 'OPAQUE'),
+    'X-MICROSOFT-CDO-BUSYSTATUS:' + busy,
+    'X-MICROSOFT-CDO-ALLDAYEVENT:TRUE',
+    'END:VEVENT', 'END:VCALENDAR'
+  ];
+  return zeilen.map(icsFalten).join('\r\n') + '\r\n';
+}
+function ladeIcs(e){
+  e.preventDefault();
+  const a = state.abw.find(x => x.id === icsId && x.person === state.user);
+  if (!a) return;
+  const blob = new Blob([erzeugeIcs(a, $('fShowAs').value)], {type: 'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = 'Planung_' + a.von + '.ics';
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  $('dlgIcs').close();
+  meldung('Kalenderdatei erstellt.');
+}
+
+/* =========================================================
+   Ereignisse
+   ========================================================= */
+document.addEventListener('click', e => {
+  const zelle = e.target.closest('td[data-own]');
+  if (zelle) { oeffneAbw(zelle.dataset.id || null, zelle.dataset.id ? null : zelle.dataset.date); return; }
+  const b = e.target.closest('[data-action]');
+  if (!b) return;
+  const id = b.dataset.id, u = ich();
+  switch (b.dataset.action) {
+    case 'tab': state.tab = b.dataset.tab; render(); $('tab-' + state.tab).focus(); break;
+    case 'nav': {
+      const n = Number(b.dataset.dir) * ({monat: 1, quartal: 3, jahr: 12})[state.ansicht];
+      state.start = monatPlus(state.start, n); render(); break;
+    }
+    case 'heute': state.start = monatsanfang(HEUTE); render(); break;
+    case 'planjahr': state.start = (JAHR + 1) + '-01-01'; render(); break;
+    case 'neu': oeffneAbw(null, null); break;
+    case 'edit': oeffneAbw(id, null); break;
+    case 'ics': oeffneIcs(id); break;
+    case 'kontoAnlegen':
+      state.konten[u.id + '|' + state.kontoJahr] = {anspruch: Number(b.dataset.a), rest: Number(b.dataset.r), geaendert: HEUTE};
+      meldung('Konto angelegt.'); render(); break;
+    case 'delSonder':
+      if (confirm('Sondertag entfernen?')) { state.sondertage = state.sondertage.filter(s => s.id !== id); render(); } break;
+    case 'delZr':
+      if (confirm('Zeitraum entfernen?')) { state.zeitraeume = state.zeitraeume.filter(z => z.id !== id); render(); } break;
+  }
+});
+document.addEventListener('keydown', e => {
+  const zelle = e.target.closest && e.target.closest('td[data-own][data-id]');
+  if (zelle && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); oeffneAbw(zelle.dataset.id, null); }
+  const tab = e.target.closest && e.target.closest('[role="tab"]');
+  if (tab && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    const alle = [...document.querySelectorAll('[role="tab"]')];
+    const i = alle.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : -1);
+    const ziel = alle[(i + alle.length) % alle.length];
+    state.tab = ziel.dataset.tab; render(); $('tab-' + state.tab).focus();
+  }
+});
+document.addEventListener('change', e => {
+  const el = e.target, typ = el.dataset.change;
+  if (!typ) return;
+  const u = ich();
+  switch (typ) {
+    case 'team': state.team = el.value; break;
+    case 'ansicht': state.ansicht = el.value; break;
+    case 'darstellung': state.darstellung = el.value; break;
+    case 'planFilter': state.planFilter = el.value; break;
+    case 'kontoJahr': state.kontoJahr = Number(el.value); break;
+    case 'feiertagJahr': state.feiertagJahr = Number(el.value); break;
+    case 'status': {
+      const a = state.abw.find(x => x.id === el.dataset.id && x.person === u.id);
+      if (a) { a.status = el.value; meldung('Status geändert: ' + STATUS[a.status].txt + '.'); }
+      break;
+    }
+    case 'konto': {
+      const k = konto(u.id, state.kontoJahr), v = Number(el.value);
+      if (!k || !(v >= 0 && v <= 60)) { meldung('Bitte einen Wert zwischen 0 und 60 eingeben.'); break; }
+      k[el.dataset.feld] = v; k.geaendert = HEUTE; meldung('Urlaubskonto aktualisiert.');
+      break;
+    }
+    case 'min': {
+      const o = org(el.dataset.id), v = Math.max(0, Math.min(mitglieder(o.id).length, Math.round(Number(el.value) || 0)));
+      o.min = v; meldung('Mindestbesetzung gespeichert.'); break;
+    }
+    case 'sicht': art(el.dataset.id)[el.dataset.feld] = el.value; meldung('Sichtbarkeit gespeichert.'); break;
+    case 'aktiv': art(el.dataset.id).aktiv = el.checked; meldung('Gespeichert.'); break;
+    default: return;
+  }
+  const fokus = el.id;
+  render();
+  if (fokus && $(fokus)) $(fokus).focus();
+});
+document.addEventListener('submit', e => {
+  const f = e.target.dataset.form;
+  if (!f) return;
+  e.preventDefault();
+  if (f === 'sonder') {
+    const d = $('nsDatum').value, b = $('nsBez').value.trim();
+    if (!d || !b) { meldung('Bitte Datum und Bezeichnung angeben.'); return; }
+    if (state.sondertage.some(s => s.datum === d)) { meldung('Für dieses Datum gibt es schon einen Sondertag.'); return; }
+    state.sondertage.push({id: 's' + (++seq), datum: d, bez: b});
+  }
+  if (f === 'zr') {
+    const b = $('nzBez').value.trim(), v = $('nzVon').value, bi = $('nzBis').value;
+    if (!b || !v || !bi || bi < v) { meldung('Bitte Bezeichnung und einen gültigen Zeitraum angeben.'); return; }
+    state.zeitraeume.push({id: 'z' + (++seq), bez: b, typ: $('nzTyp').value, von: v, bis: bi, geltung: $('nzGeltung').value || null});
+  }
+  meldung('Hinzugefügt.');
+  render();
+});
+$('selUser').addEventListener('change', e => {
+  state.user = e.target.value; state.team = null; state.tab = 'kal';
+  meldung('Ansicht gewechselt: ' + ich().name + '.');
+  render();
+});
+$('frmAbw').addEventListener('submit', speichereAbw);
+$('frmAbw').addEventListener('input', pruefeAnzeigen);
+$('frmAbw').addEventListener('change', pruefeAnzeigen);
+$('btnAbbrechen').addEventListener('click', () => $('dlgAbw').close());
+$('btnLoeschen').addEventListener('click', loescheAbw);
+$('frmIcs').addEventListener('submit', ladeIcs);
+$('btnIcsAbbrechen').addEventListener('click', () => $('dlgIcs').close());
+
+renderUserSelect();
+render();
+</script>
+</body>
+</html>
