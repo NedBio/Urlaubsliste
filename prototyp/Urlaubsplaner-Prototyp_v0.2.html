@@ -127,6 +127,9 @@ td input[type=number],td select{height:36px;padding:4px 8px;font-size:14px;borde
 td input[type=number]{width:80px}
 td select{width:auto;min-width:120px}
 .num{text-align:right;white-space:nowrap}
+.chk{display:flex;gap:10px;align-items:center;min-height:40px;cursor:pointer}
+.chk input{width:20px;height:20px;margin:0}
+.bericht td:first-child{color:var(--text-muted)}
 
 @media (max-width:700px){
   main{padding:12px 16px}
@@ -155,10 +158,12 @@ td select{width:auto;min-width:120px}
 </header>
 
 <div class="demo noprint" role="region" aria-label="Demo-Steuerung">
-  <span class="badge warn">▲ Prototyp mit fiktiven Daten</span>
+  <span class="badge warn" id="modusBadge">▲ Prototyp mit fiktiven Daten</span>
   <label for="selUser">Angemeldet als (Demo):</label>
   <select id="selUser"></select>
-  <span class="hint">Eingaben gehen beim Neuladen verloren. Bitte keine echten Namen oder Daten eintragen.</span>
+  <button type="button" class="secondary" id="btnImport">Excel testweise laden</button>
+  <button type="button" class="secondary" id="btnReset" hidden>Zurück zu Beispieldaten</button>
+  <span class="hint" id="modusHint">Eingaben gehen beim Neuladen verloren. Bitte keine echten Namen oder Daten von Hand eintragen.</span>
 </div>
 
 <main>
@@ -169,7 +174,7 @@ td select{width:auto;min-width:120px}
 
 <div class="wrap-footer">
 <footer class="app-footer">
-  <span><span class="class-badge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.1 · Stand 16.11.2026</span>
+  <span><span class="class-badge" id="klasseBadge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.2 · Stand 16.11.2026</span>
   <span>Grundlage: Lastenheft Urlaubsplaner, Entwurf 0.1</span>
 </footer>
 </div>
@@ -231,6 +236,31 @@ td select{width:auto;min-width:120px}
   </form>
 </dialog>
 
+<!-- Dialog: Excel-Import (nur lokal) -->
+<dialog id="dlgImport" aria-labelledby="dlgImportTitel">
+  <form id="frmImport">
+    <div class="dlg-body">
+      <h2 id="dlgImportTitel">Excel-Urlaubsliste testweise laden</h2>
+      <ul class="msg">
+        <li class="info">i Die Datei wird nur in diesem Browserfenster gelesen. Nichts wird hochgeladen oder gespeichert. Beim Schließen oder Neuladen ist alles weg.</li>
+        <li class="warn">▲ Echte Daten nur für dich selbst ansehen. Für Vorführungen die Platzhalter-Namen eingeschaltet lassen und keine Bildschirmfotos mit echten Namen weitergeben.</li>
+      </ul>
+      <div class="fld" style="margin-top:12px">
+        <label class="lbl" for="fDatei">Excel-Datei (.xlsx)</label>
+        <input type="file" id="fDatei" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+      </div>
+      <label class="chk"><input type="checkbox" id="fPseudo" checked> Namen durch Platzhalter ersetzen (Person 01, Person 02 …)</label>
+      <label class="chk"><input type="checkbox" id="fReha"> Reha-Einträge (R) übernehmen</label>
+      <p class="hint">Reha ist ein Gesundheitsdatum und wird deshalb standardmäßig ausgelassen.</p>
+      <div id="importBericht" aria-live="polite"></div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="secondary" id="btnImportSchliessen">Schließen</button>
+      <button type="submit" class="primary" id="btnImportStart">Einlesen</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 'use strict';
 
@@ -253,7 +283,7 @@ const ORG = [
   {id:'T2120', kuerzel:'21.20', name:'PM',           typ:'Team',      parent:'A21', min:2}
 ];
 
-const PERSONEN = [
+let PERSONEN = [
   {id:'p1',  name:'Alex Beispiel',     team:'T2110', rollen:['ma','fk'], fuehrt:['T2110'], info:'Teamleitung 21.10'},
   {id:'p2',  name:'Bo Muster',         team:'T2110', rollen:['ma'], info:'Mitarbeiter*in 21.10'},
   {id:'p3',  name:'Chris Probe',       team:'T2110', rollen:['ma']},
@@ -281,8 +311,9 @@ const ARTEN_START = [
 
 const HEUTE = heuteIso();
 const JAHR = Number(HEUTE.slice(0,4));
-const PLAN_MIN = JAHR + '-01-01';
-const PLAN_MAX = (JAHR + 1) + '-12-31';
+let PLAN_MIN = JAHR + '-01-01';
+let PLAN_MAX = (JAHR + 1) + '-12-31';
+function planJahre(){ const r = []; for (let y = Number(PLAN_MIN.slice(0,4)); y <= Number(PLAN_MAX.slice(0,4)); y++) r.push(y); return r; }
 
 /* Zustand: nur im Arbeitsspeicher, bewusst ohne Browser-Speicher */
 let seq = 100;
@@ -295,6 +326,7 @@ const state = {
   start: monatsanfang(HEUTE),
   planFilter: 'alle',
   kontoJahr: JAHR + 1,
+  planjahr: JAHR + 1,
   feiertagJahr: JAHR + 1,
   arten: ARTEN_START.map(a => Object.assign({}, a)),
   org: ORG.map(o => Object.assign({}, o)),
@@ -408,7 +440,7 @@ const org = id => state.org.find(o => o.id === id);
 const art = id => state.arten.find(a => a.id === id);
 const ich = () => person(state.user);
 const hat = (u, r) => u.rollen.includes(r);
-function teamName(id){ const o = org(id); return o ? o.kuerzel + ' ' + o.name : ''; }
+function teamName(id){ const o = org(id); return o ? (o.kuerzel + ' ' + (o.name || '')).trim() : ''; }
 function mitglieder(teamId){ return PERSONEN.filter(p => p.team === teamId); }
 
 function fuehrtTeam(u, teamId){
@@ -553,7 +585,7 @@ function panelKalender(u){
     <div class="btnrow">
       <button type="button" class="secondary" data-action="nav" data-dir="-1" aria-label="Vorheriger Zeitraum">‹ Zurück</button>
       <button type="button" class="secondary" data-action="heute">Heute</button>
-      <button type="button" class="secondary" data-action="planjahr">Planungsjahr ${JAHR + 1}</button>
+      <button type="button" class="secondary" data-action="planjahr">Planungsjahr ${state.planjahr}</button>
       <button type="button" class="secondary" data-action="nav" data-dir="1" aria-label="Nächster Zeitraum">Weiter ›</button>
     </div>
     <div class="grow"></div>
@@ -686,7 +718,7 @@ function panelPlanung(u){
   <div class="kpis">
     <div class="kpi"><div class="l">Einträge</div><div class="v">${abwVon(u.id).length}</div></div>
     <div class="kpi"><div class="l">Noch nicht im ESS beantragt</div><div class="v">${offen}</div></div>
-    <div class="kpi"><div class="l">Geplante Urlaubstage ${JAHR + 1}</div><div class="v">${geplant(u.id, JAHR + 1).gesamt}</div></div>
+    <div class="kpi"><div class="l">Geplante Urlaubstage ${state.planjahr}</div><div class="v">${geplant(u.id, state.planjahr).gesamt}</div></div>
   </div>
   ${offen ? `<ul class="msg"><li class="warn">▲ ${offen} ${offen === 1 ? 'Eintrag ist' : 'Einträge sind'} noch nicht im ESS beantragt. Die Planung hier ersetzt den Antrag nicht.</li></ul>` : ''}
   <div class="toolbar">
@@ -727,7 +759,7 @@ function panelKonto(u){
   <div class="openbox">Eigene Angaben zur Planung. Maßgeblich sind die Werte im ESS. Sichtbar für dich und deine Führungskraft.</div>
   <div class="toolbar" style="margin-top:12px">
     <div class="fld"><label class="lbl" for="selKJahr">Jahr</label>
-      <select id="selKJahr" data-change="kontoJahr">${[JAHR, JAHR + 1].map(y => `<option${y === jahr ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
+      <select id="selKJahr" data-change="kontoJahr">${planJahre().map(y => `<option${y === jahr ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
   </div>`;
   if (!k) {
     const v = vorschlag(u.id, jahr);
@@ -757,7 +789,7 @@ function panelTeamKonten(u){
   <div class="openbox">Nur lesend. Die Werte pflegen die Kolleg*innen selbst. Maßgeblich ist das ESS. Nicht zur Leistungs- oder Verhaltensbewertung verwenden.</div>
   <div class="toolbar" style="margin-top:12px">
     <div class="fld"><label class="lbl" for="selTKJahr">Jahr</label>
-      <select id="selTKJahr" data-change="kontoJahr">${[JAHR, JAHR + 1].map(y => `<option${y === jahr ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
+      <select id="selTKJahr" data-change="kontoJahr">${planJahre().map(y => `<option${y === jahr ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
   </div>`;
   for (const t of gefuehrteTeams(u)) {
     const rows = sortierteMitglieder(t, u).map(p => {
@@ -880,7 +912,7 @@ function pruefe(){
   const von = $('fVon').value, bis = $('fBis').value, ar = art($('fArt').value);
   if (!von || !bis) { r.fehler.push('Bitte Von und Bis angeben.'); return r; }
   if (bis < von) { r.fehler.push('Das Enddatum liegt vor dem Startdatum.'); return r; }
-  if (von < PLAN_MIN || bis > PLAN_MAX) { r.fehler.push(`Planung ist für ${JAHR} und ${JAHR + 1} möglich.`); return r; }
+  if (von < PLAN_MIN || bis > PLAN_MAX) { r.fehler.push(`Planung ist von ${fmt(PLAN_MIN)} bis ${fmt(PLAN_MAX)} möglich.`); return r; }
   r.tage = arbeitstage(von, bis);
   if (r.tage === 0) r.fehler.push('Der Zeitraum enthält keine Arbeitstage.');
   for (const a of abwVon(u.id)) {
@@ -1005,6 +1037,333 @@ function ladeIcs(e){
   meldung('Kalenderdatei erstellt.');
 }
 
+
+/* =========================================================
+   Excel-Import (nur lokal im Browser, ohne Bibliotheken)
+   Liest .xlsx (ZIP + XML) mit Bordmitteln des Browsers:
+   DecompressionStream und DOMParser. Kein Upload, kein Speichern.
+   ========================================================= */
+const MAX_ENTPACKT = 60 * 1024 * 1024;
+const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+/* Kürzel der bisherigen Excel → Abwesenheitsart im Tool */
+const KUERZEL_IMPORT = {P:'U', U:'U', G:'G', S:'S', EZ:'EZ', R:'R', F:'A', D:'D', SU:'SU', A:'A'};
+
+async function entpacke(buf){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
+  let eocd = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('Die Datei ist keine gültige .xlsx-Datei.');
+  const anzahl = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true), summe = 0;
+  const dateien = new Map();
+  for (let n = 0; n < anzahl; n++) {
+    if (p + 46 > buf.byteLength || dv.getUint32(p, true) !== 0x02014b50) throw new Error('Die Datei ist beschädigt.');
+    const methode = dv.getUint16(p + 10, true), gepackt = dv.getUint32(p + 20, true), entpackt = dv.getUint32(p + 24, true);
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), kl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + el + kl;
+    if (!/\.(xml|rels)$/i.test(name)) continue;
+    summe += entpackt;
+    if (summe > MAX_ENTPACKT) throw new Error('Die Datei ist zu groß.');
+    const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    dateien.set(name, {methode, daten: u8.subarray(start, start + gepackt)});
+  }
+  return async name => {
+    const d = dateien.get(name);
+    if (!d) return null;
+    if (d.methode === 0) return dec.decode(d.daten);
+    if (d.methode !== 8) throw new Error('Die Datei nutzt ein nicht unterstütztes Komprimierungsverfahren.');
+    const strom = new Blob([d.daten]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return dec.decode(await new Response(strom).arrayBuffer());
+  };
+}
+function xmlDok(t){
+  const d = new DOMParser().parseFromString(t, 'application/xml');
+  if (d.getElementsByTagName('parsererror').length) throw new Error('Die Datei enthält fehlerhaftes XML.');
+  return d;
+}
+const kinder = (el, n) => [...el.getElementsByTagNameNS('*', n)];
+function zellbezug(ref){
+  const m = /^([A-Z]+)(\d+)$/.exec(ref || '');
+  if (!m) return null;
+  let c = 0;
+  for (const ch of m[1]) c = c * 26 + ch.charCodeAt(0) - 64;
+  return [Number(m[2]), c];
+}
+async function leseMappe(buf){
+  const lies = await entpacke(buf);
+  const wbText = await lies('xl/workbook.xml'), relText = await lies('xl/_rels/workbook.xml.rels');
+  if (!wbText || !relText) throw new Error('Die Datei ist keine Excel-Arbeitsmappe.');
+  const wb = xmlDok(wbText), ziel = {};
+  kinder(xmlDok(relText), 'Relationship').forEach(r => {
+    const t = r.getAttribute('Target') || '';
+    ziel[r.getAttribute('Id')] = t.startsWith('/') ? t.slice(1) : 'xl/' + t.replace(/^\.\//, '');
+  });
+  const pr = kinder(wb, 'workbookPr')[0];
+  const d1904 = !!pr && /^(1|true)$/i.test(pr.getAttribute('date1904') || '');
+  const ssText = await lies('xl/sharedStrings.xml');
+  const ss = ssText ? kinder(xmlDok(ssText), 'si').map(si => kinder(si, 't').filter(t => t.parentNode.localName !== 'rPh').map(t => t.textContent).join('')) : [];
+  const blaetter = [];
+  for (const sh of kinder(wb, 'sheet')) {
+    const pfad = ziel[sh.getAttributeNS(NS_R, 'id')];
+    const text = pfad ? await lies(pfad) : null;
+    if (!text) continue;
+    const zellen = new Map();
+    let maxZeile = 0;
+    for (const c of kinder(xmlDok(text), 'c')) {
+      const rc = zellbezug(c.getAttribute('r'));
+      if (!rc) continue;
+      const typ = c.getAttribute('t');
+      let v;
+      if (typ === 'inlineStr') v = kinder(c, 't').map(x => x.textContent).join('');
+      else {
+        const ve = kinder(c, 'v')[0];
+        if (!ve) continue;
+        v = ve.textContent;
+        if (typ === 's') v = ss[Number(v)] ?? '';
+        else if (typ === 'b') v = v === '1';
+        else if (typ !== 'str' && typ !== 'e' && typ !== 'd') v = Number(v);
+      }
+      if (v === '') continue;
+      zellen.set(rc[0] + ',' + rc[1], v);
+      if (rc[0] > maxZeile) maxZeile = rc[0];
+    }
+    blaetter.push({name: sh.getAttribute('name') || '', zellen, maxZeile, zelle: (r, c) => zellen.get(r + ',' + c)});
+  }
+  return {blaetter, d1904};
+}
+function serialZuIso(n, d1904){
+  const basis = d1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 30);
+  return iso(new Date(basis + Math.round(n) * 86400000));
+}
+const istSerial = v => typeof v === 'number' && v > 36000 && v < 73050;
+const leer = v => v === undefined || v === null || String(v).trim() === '';
+
+/* Planungsblatt: eine Zeile mit mindestens 28 fortlaufenden Datumswerten */
+function findeDatumszeile(bl){
+  for (let r = 1; r <= 8; r++) for (let c = 1; c <= 12; c++) {
+    const v = bl.zelle(r, c);
+    if (!istSerial(v)) continue;
+    let n = 1;
+    while (bl.zelle(r, c + n) === v + n) n++;
+    if (n >= 28) return {zeile: r, spalte: c, anzahl: n, start: v};
+  }
+  return null;
+}
+/* Zusammenhängende Läufe bilden. kalender=true: nur direkt aufeinanderfolgende Tage;
+   sonst auch über arbeitsfreie Tage hinweg (Wochenende, Feiertag, Sondertag). */
+function laeufe(ts, kalender){
+  const out = [];
+  let von = null, bis = null;
+  for (const t of ts) {
+    if (von && (t === plus(bis, 1) || (!kalender && tage(plus(bis, 1), t).slice(0, -1).every(x => !istArbeitstag(x))))) { bis = t; continue; }
+    if (von) out.push([von, bis]);
+    von = t; bis = t;
+  }
+  if (von) out.push([von, bis]);
+  return out;
+}
+function sammleTeamLabels(mappe){
+  const l = {};
+  for (const bl of mappe.blaetter) for (const v of bl.zellen.values()) {
+    if (typeof v !== 'string') continue;
+    const m = /^(\d+(?:\.\d+)+)\s+([A-Za-zÄÖÜäöüß][\wÄÖÜäöüß .\/&-]{0,30})$/.exec(v.trim());
+    if (m && !l[m[1]]) l[m[1]] = m[2].trim();
+  }
+  return l;
+}
+function sammleSondertage(mappe){
+  const out = [];
+  for (const bl of mappe.blaetter) for (const [k, v] of bl.zellen) {
+    if (typeof v !== 'string' || !/sondertag/i.test(v)) continue;
+    const [r, c] = k.split(',').map(Number), d = bl.zelle(r, c + 1);
+    if (!istSerial(d)) continue;
+    const datum = serialZuIso(d, mappe.d1904);
+    if (!out.some(s => s.datum === datum)) out.push({id: 'is' + (++seq), datum, bez: 'Betrieblicher Sondertag'});
+  }
+  return out;
+}
+function leseKonten(mappe, personen, bericht){
+  const konten = {};
+  for (const bl of mappe.blaetter) {
+    let kopf = null;
+    for (let r = 1; r <= 5 && !kopf; r++) {
+      const sp = {};
+      for (let c = 1; c <= 15; c++) {
+        const v = bl.zelle(r, c);
+        if (typeof v !== 'string') continue;
+        const t = v.replace(/\s+/g, ' ').trim();
+        if (/^name$/i.test(t)) sp.name = c;
+        else if (/^rest/i.test(t)) sp.rest = c;
+        else if (/urlaub in/i.test(t)) { sp.anspruch = c; const m = /(\d{4})/.exec(t); if (m) sp.jahr = Number(m[1]); }
+      }
+      if (sp.name && sp.anspruch) kopf = Object.assign(sp, {zeile: r});
+    }
+    if (!kopf) continue;
+    bericht.kontoblatt = true;
+    const jahr = kopf.jahr || bericht.hauptjahr;
+    bericht.kontojahr = jahr;
+    const vergeben = new Set();
+    for (let r = kopf.zeile + 1; r <= bl.maxZeile; r++) {
+      const name = bl.zelle(r, kopf.name), anspruch = bl.zelle(r, kopf.anspruch);
+      if (typeof name !== 'string' || typeof anspruch !== 'number') continue;
+      const p = personen.find(x => x.name === name.trim() && !vergeben.has(x.id));
+      if (!p) { bericht.kontoOhnePerson++; continue; }
+      vergeben.add(p.id);
+      const rest = kopf.rest ? bl.zelle(r, kopf.rest) : 0;
+      konten[p.id + '|' + jahr] = {anspruch, rest: typeof rest === 'number' ? rest : 0, geaendert: HEUTE};
+      bericht.konten++;
+    }
+    bericht.ohneKonto = personen.filter(p => !konten[p.id + '|' + jahr]).length;
+  }
+  return konten;
+}
+
+function werteAus(mappe, opt){
+  const b = {blaetter: [], personen: 0, eintraege: 0, verworfen: 0, unbekannt: {}, umgeschluesselt: {}, reha: 0,
+             markerSpalten: 0, zeitraeume: 0, sondertage: 0, konten: 0, ohneKonto: 0, kontoOhnePerson: 0, jahre: {}};
+  const sonder = sammleSondertage(mappe);
+  const sicherung = state.sondertage;
+  if (sonder.length) state.sondertage = sonder;   /* nötig für die Arbeitstagsprüfung */
+  b.sondertage = sonder.length;
+  try {
+    const labels = sammleTeamLabels(mappe);
+    const orgNeu = [], personen = [], abw = [], zr = [];
+    let tn = 0, pn = 0;
+    for (const bl of mappe.blaetter) {
+      const k = findeDatumszeile(bl);
+      if (!k || k.spalte < 2) continue;
+      b.blaetter.push(bl.name);
+      const abtId = 'IA' + (orgNeu.length + 1);
+      orgNeu.push({id: abtId, kuerzel: bl.name, name: '', typ: 'Abteilung', parent: null});
+      const nameSp = k.spalte - 1, gruppeSp = k.spalte - 2;
+      const spalten = [];
+      for (let i = 0; i < k.anzahl; i++) spalten.push([k.spalte + i, serialZuIso(k.start + i, mappe.d1904)]);
+      /* Zeilen bis "Legende" einsammeln */
+      const zeilen = [];
+      for (let r = k.zeile + 1; r <= bl.maxZeile; r++) {
+        const name = bl.zelle(r, nameSp);
+        if (typeof name !== 'string' || !name.trim()) continue;
+        if (/^legende$/i.test(name.trim())) break;
+        zeilen.push({r, name: name.trim(), gruppe: gruppeSp >= 1 ? bl.zelle(r, gruppeSp) : undefined});
+      }
+      /* Markierungsspalten (in jeder Personenzeile derselbe Wert, z. B. Endmarkierung) ignorieren */
+      const ignor = new Set(), personenZeilen = zeilen.filter(z => !leer(z.gruppe));
+      if (personenZeilen.length >= 5) for (const [c] of spalten) {
+        const w = personenZeilen.map(z => bl.zelle(z.r, c));
+        if (w.every(x => !leer(x) && String(x).trim() === String(w[0]).trim())) { ignor.add(c); b.markerSpalten++; }
+      }
+      const teamIds = {};
+      for (const z of zeilen) {
+        const codes = spalten.filter(([c]) => !ignor.has(c) && !leer(bl.zelle(z.r, c))).map(([c, t]) => [t, String(bl.zelle(z.r, c)).trim().toUpperCase()]);
+        if (leer(z.gruppe)) {
+          /* Zeile ohne Gruppe: Info- oder Sperrzeitraum (z. B. Ferien, SAP-Termine) */
+          const typ = /ferien|unterrichtsfrei/i.test(z.name) ? 'info' : 'sperr';
+          for (const [von, bis] of laeufe(codes.map(x => x[0]), true)) { zr.push({id: 'iz' + (++seq), bez: z.name, typ, von, bis, geltung: abtId}); b.zeitraeume++; }
+          continue;
+        }
+        const g = String(z.gruppe).trim();
+        if (!teamIds[g]) { teamIds[g] = 'IT' + (++tn); orgNeu.push({id: teamIds[g], kuerzel: g, name: labels[g] || '', typ: 'Team', parent: abtId, min: 0}); }
+        const pid = 'IP' + (++pn);
+        personen.push({id: pid, name: z.name, team: teamIds[g], rollen: ['ma']});
+        const proArt = {};
+        for (const [t, roh] of codes) {
+          const a = KUERZEL_IMPORT[roh];
+          if (!a) { b.unbekannt[roh] = (b.unbekannt[roh] || 0) + 1; continue; }
+          if (a === 'R' && !opt.reha) { b.reha++; continue; }
+          if (!istArbeitstag(t)) { b.verworfen++; continue; }
+          if (roh !== a) { const key = roh + ' → ' + art(a).bez; b.umgeschluesselt[key] = (b.umgeschluesselt[key] || 0) + 1; }
+          (proArt[a] = proArt[a] || []).push(t);
+        }
+        for (const a of Object.keys(proArt)) for (const [von, bis] of laeufe(proArt[a].sort(), false)) {
+          abw.push({id: 'IE' + (++seq), person: pid, art: a, von, bis, status: 'idee'});
+          b.eintraege++;
+          b.jahre[von.slice(0,4)] = (b.jahre[von.slice(0,4)] || 0) + 1;
+        }
+      }
+      for (const [c, t] of spalten) b.jahre[t.slice(0,4)] = (b.jahre[t.slice(0,4)] || 0) + 0.001;
+    }
+    if (!b.blaetter.length) throw new Error('Kein Planungsblatt erkannt. Erwartet wird eine Zeile mit fortlaufenden Datumswerten und links daneben Gruppe und Name.');
+    if (!personen.length) throw new Error('Im Planungsblatt wurden keine Personen gefunden.');
+    b.personen = personen.length;
+    b.hauptjahr = Number(Object.keys(b.jahre).sort((x, y) => b.jahre[y] - b.jahre[x])[0]);
+    const konten = leseKonten(mappe, personen, b);
+    return {orgNeu, personen, abw, zr, konten, bericht: b};
+  } catch (e) {
+    state.sondertage = sicherung;
+    throw e;
+  }
+}
+
+function uebernehmeImport(erg, opt){
+  const {orgNeu, personen, abw, zr, konten, bericht} = erg;
+  if (opt.pseudo) personen.forEach((p, i) => { p.name = 'Person ' + String(i + 1).padStart(2, '0'); });
+  const abteilungen = orgNeu.filter(o => o.typ === 'Abteilung').map(o => o.id);
+  PERSONEN = personen.concat([
+    {id: 'IFK', name: 'Führungskraft (Test)', team: null, rollen: ['ma', 'fk'], fuehrt: abteilungen, info: 'sieht alle importierten Teams'},
+    {id: 'adm', name: 'Fachadministration', team: null, rollen: ['admin'], info: 'nur Stammdaten'}
+  ]);
+  state.org = orgNeu; state.abw = abw; state.zeitraeume = zr; state.konten = konten;
+  const jahre = Object.keys(bericht.jahre).map(Number);
+  const jMin = Math.min(JAHR, ...jahre), jMax = Math.max(JAHR + 1, ...jahre);
+  PLAN_MIN = jMin + '-01-01'; PLAN_MAX = jMax + '-12-31';
+  state.planjahr = bericht.hauptjahr;
+  state.kontoJahr = bericht.kontojahr || bericht.hauptjahr;
+  state.start = bericht.hauptjahr + '-01-01';
+  state.user = personen[0].id; state.team = null; state.tab = 'kal'; state.ansicht = 'monat';
+  $('modusBadge').className = 'badge crit';
+  $('modusBadge').textContent = opt.pseudo ? '▲ Importierte Daten, Namen ersetzt' : '▲ Echte Daten geladen, nur in diesem Fenster';
+  $('modusHint').textContent = 'Nichts wird gespeichert. Neuladen oder „Zurück zu Beispieldaten“ entfernt die importierten Daten.';
+  $('btnReset').hidden = false;
+  $('klasseBadge').textContent = 'Datenklasse offen, enthält importierte Daten (nur in diesem Fenster)';
+  renderUserSelect();
+  render();
+}
+
+function berichtHtml(b, opt){
+  const zeile = (l, v) => `<tr><td>${esc(l)}</td><td>${v}</td></tr>`;
+  const liste = o => Object.keys(o).length ? Object.entries(o).map(([k, n]) => `${esc(k)} (${n}×)`).join(', ') : '–';
+  return `<ul class="msg"><li class="ok">✓ Datei eingelesen. Bitte die Werte prüfen.</li></ul>
+  <table class="bericht"><tbody>
+    ${zeile('Planungsblätter', esc(b.blaetter.join(', ')))}
+    ${zeile('Personen', b.personen + (opt.pseudo ? ' (Namen ersetzt)' : ''))}
+    ${zeile('Planungseinträge (Zeiträume)', b.eintraege + ', alle mit Status „Idee“')}
+    ${zeile('Hauptjahr', b.hauptjahr)}
+    ${zeile('Einträge an Wochenenden, Feiertagen oder Sondertagen', b.verworfen + ' Tage, nicht übernommen')}
+    ${zeile('Reha', opt.reha ? 'übernommen' : b.reha + ' Tage, nicht übernommen')}
+    ${zeile('Umgeschlüsselt', liste(b.umgeschluesselt))}
+    ${zeile('Unbekannte Kürzel', liste(b.unbekannt) + (Object.keys(b.unbekannt).length ? ' – nicht übernommen' : ''))}
+    ${zeile('Ignorierte Markierungsspalten', b.markerSpalten)}
+    ${zeile('Sperr- und Infozeiträume', b.zeitraeume)}
+    ${zeile('Betriebliche Sondertage', b.sondertage ? b.sondertage + ' aus der Datei' : 'keine gefunden, Beispielwerte bleiben')}
+    ${zeile('Urlaubskonten', b.kontoblatt ? `${b.konten} übernommen (${b.kontojahr}), ${b.ohneKonto} Personen ohne Konto${b.kontoOhnePerson ? ', ' + b.kontoOhnePerson + ' Zeilen ohne passende Person' : ''}` : 'kein Übersichtsblatt gefunden')}
+    ${zeile('Mindestbesetzung', 'nicht in der Datei, je Team unter „Verwaltung“ setzbar')}
+  </tbody></table>`;
+}
+
+async function starteImport(e){
+  e.preventDefault();
+  const datei = $('fDatei').files[0], ziel = $('importBericht');
+  if (!datei) { ziel.innerHTML = '<ul class="msg"><li class="crit">✕ Bitte eine Datei auswählen.</li></ul>'; return; }
+  if (typeof DecompressionStream === 'undefined') { ziel.innerHTML = '<ul class="msg"><li class="crit">✕ Dieser Browser unterstützt das Einlesen nicht. Bitte einen aktuellen Edge, Chrome oder Firefox verwenden.</li></ul>'; return; }
+  const opt = {pseudo: $('fPseudo').checked, reha: $('fReha').checked};
+  $('btnImportStart').disabled = true;
+  ziel.innerHTML = '<p class="hint">Datei wird gelesen …</p>';
+  try {
+    const erg = werteAus(await leseMappe(await datei.arrayBuffer()), opt);
+    uebernehmeImport(erg, opt);
+    ziel.innerHTML = berichtHtml(erg.bericht, opt);
+    $('btnImportSchliessen').textContent = 'Zur Ansicht';
+    meldung('Excel-Datei eingelesen.');
+  } catch (err) {
+    ziel.innerHTML = `<ul class="msg"><li class="crit">✕ ${esc(err && err.message ? err.message : 'Die Datei konnte nicht gelesen werden.')}</li></ul>`;
+  } finally {
+    $('btnImportStart').disabled = false;
+  }
+}
+
 /* =========================================================
    Ereignisse
    ========================================================= */
@@ -1021,7 +1380,7 @@ document.addEventListener('click', e => {
       state.start = monatPlus(state.start, n); render(); break;
     }
     case 'heute': state.start = monatsanfang(HEUTE); render(); break;
-    case 'planjahr': state.start = (JAHR + 1) + '-01-01'; render(); break;
+    case 'planjahr': state.start = state.planjahr + '-01-01'; render(); break;
     case 'neu': oeffneAbw(null, null); break;
     case 'edit': oeffneAbw(id, null); break;
     case 'ics': oeffneIcs(id); break;
@@ -1109,6 +1468,15 @@ $('btnAbbrechen').addEventListener('click', () => $('dlgAbw').close());
 $('btnLoeschen').addEventListener('click', loescheAbw);
 $('frmIcs').addEventListener('submit', ladeIcs);
 $('btnIcsAbbrechen').addEventListener('click', () => $('dlgIcs').close());
+$('btnImport').addEventListener('click', () => {
+  $('importBericht').innerHTML = ''; $('btnImportSchliessen').textContent = 'Schließen'; $('fDatei').value = '';
+  $('dlgImport').showModal();
+});
+$('btnImportSchliessen').addEventListener('click', () => $('dlgImport').close());
+$('frmImport').addEventListener('submit', starteImport);
+$('btnReset').addEventListener('click', () => {
+  if (confirm('Importierte Daten verwerfen und zu den Beispieldaten zurückkehren?')) location.reload();
+});
 
 renderUserSelect();
 render();
