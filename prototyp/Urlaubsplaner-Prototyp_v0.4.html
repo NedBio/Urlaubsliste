@@ -178,7 +178,7 @@ td select{width:auto;min-width:120px}
 
 <div class="wrap-footer">
 <footer class="app-footer">
-  <span><span class="class-badge" id="klasseBadge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.3 · Stand 16.11.2026</span>
+  <span><span class="class-badge" id="klasseBadge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.4 · Stand 16.11.2026</span>
   <span>Grundlage: Lastenheft Urlaubsplaner, Entwurf 0.1</span>
 </footer>
 </div>
@@ -1059,6 +1059,17 @@ const MAX_ENTPACKT = 60 * 1024 * 1024;
 const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 /* Kürzel der bisherigen Excel → Abwesenheitsart im Tool */
 const KUERZEL_IMPORT = {P:'U', U:'U', G:'G', S:'S', EZ:'EZ', R:'R', F:'A', D:'D', SU:'SU', A:'A'};
+/* Zeilen, die keine Personen sind (Erkennung am Zeilennamen, unabhängig von der Gruppe) */
+const MUSTER_PLATZHALTER = /^zz/i;                                   /* z. B. zz_1, zz_frei */
+const MUSTER_INFO = /ferien|unterrichtsfrei/i;                        /* z. B. Ferien Berlin, Ferien Brandenburg */
+const MUSTER_SPERR = /\bsap\b|upgrade|db-kopie|sperrzeit|wartung/i;  /* z. B. SAP Upgrade/DB-Kopie */
+function zeilenart(name, gruppe){
+  if (MUSTER_PLATZHALTER.test(name)) return 'platzhalter';
+  if (MUSTER_INFO.test(name)) return 'info';
+  if (MUSTER_SPERR.test(name)) return 'sperr';
+  if (leer(gruppe)) return 'sperr';
+  return 'person';
+}
 
 async function entpacke(buf){
   const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
@@ -1220,7 +1231,7 @@ function leseKonten(mappe, personen, bericht){
     const vergeben = new Set();
     for (let r = kopf.zeile + 1; r <= bl.maxZeile; r++) {
       const name = bl.zelle(r, kopf.name), anspruch = bl.zelle(r, kopf.anspruch);
-      if (typeof name !== 'string' || typeof anspruch !== 'number') continue;
+      if (typeof name !== 'string' || typeof anspruch !== 'number' || zeilenart(name.trim(), 'x') !== 'person') continue;
       const p = personen.find(x => x.name === name.trim() && !vergeben.has(x.id));
       if (!p) { bericht.kontoOhnePerson++; continue; }
       vergeben.add(p.id);
@@ -1234,7 +1245,7 @@ function leseKonten(mappe, personen, bericht){
 }
 
 function werteAus(mappe, opt){
-  const b = {blaetter: [], personen: 0, eintraege: 0, verworfen: 0, unbekannt: {}, umgeschluesselt: {}, reha: 0,
+  const b = {blaetter: [], personen: 0, eintraege: 0, verworfen: 0, unbekannt: {}, umgeschluesselt: {}, reha: 0, platzhalter: 0, zeilen: {},
              markerSpalten: 0, zeitraeume: 0, sondertage: 0, konten: 0, ohneKonto: 0, kontoOhnePerson: 0, jahre: {}};
   const sonder = sammleSondertage(mappe);
   const sicherung = state.sondertage;
@@ -1259,10 +1270,13 @@ function werteAus(mappe, opt){
         const name = bl.zelle(r, nameSp);
         if (typeof name !== 'string' || !name.trim()) continue;
         if (/^legende$/i.test(name.trim())) break;
-        zeilen.push({r, name: name.trim(), gruppe: gruppeSp >= 1 ? bl.zelle(r, gruppeSp) : undefined});
+        const gruppe = gruppeSp >= 1 ? bl.zelle(r, gruppeSp) : undefined;
+        const za = zeilenart(name.trim(), gruppe);
+        if (za === 'platzhalter') { b.platzhalter++; continue; }
+        zeilen.push({r, name: name.trim(), gruppe, art: za});
       }
       /* Markierungsspalten (in jeder Personenzeile derselbe Wert, z. B. Endmarkierung) ignorieren */
-      const ignor = new Set(), personenZeilen = zeilen.filter(z => !leer(z.gruppe));
+      const ignor = new Set(), personenZeilen = zeilen.filter(z => z.art === 'person');
       if (personenZeilen.length >= 5) for (const [c] of spalten) {
         const w = personenZeilen.map(z => bl.zelle(z.r, c));
         if (w.every(x => !leer(x) && String(x).trim() === String(w[0]).trim())) { ignor.add(c); b.markerSpalten++; }
@@ -1270,10 +1284,11 @@ function werteAus(mappe, opt){
       const teamIds = {};
       for (const z of zeilen) {
         const codes = spalten.filter(([c]) => !ignor.has(c) && !leer(bl.zelle(z.r, c))).map(([c, t]) => [t, String(bl.zelle(z.r, c)).trim().toUpperCase()]);
-        if (leer(z.gruppe)) {
-          /* Zeile ohne Gruppe: Info- oder Sperrzeitraum (z. B. Ferien, SAP-Termine) */
-          const typ = /ferien|unterrichtsfrei/i.test(z.name) ? 'info' : 'sperr';
-          for (const [von, bis] of laeufe(codes.map(x => x[0]), true)) { zr.push({id: 'iz' + (++seq), bez: z.name, typ, von, bis, geltung: abtId}); b.zeitraeume++; }
+        if (z.art !== 'person') {
+          /* Info- oder Sperrzeile (z. B. Ferien, SAP-Termine): eigene Zeile über dem Kalender */
+          const l = laeufe(codes.map(x => x[0]), true);
+          for (const [von, bis] of l) { zr.push({id: 'iz' + (++seq), bez: z.name, typ: z.art, von, bis, geltung: abtId}); b.zeitraeume++; }
+          b.zeilen[z.name] = {typ: z.art, anzahl: (b.zeilen[z.name] ? b.zeilen[z.name].anzahl : 0) + l.length};
           continue;
         }
         const g = String(z.gruppe).trim();
@@ -1352,7 +1367,8 @@ function berichtHtml(b, opt){
     ${zeile('Umgeschlüsselt', liste(b.umgeschluesselt))}
     ${zeile('Unbekannte Kürzel', liste(b.unbekannt) + (Object.keys(b.unbekannt).length ? ' – nicht übernommen' : ''))}
     ${zeile('Ignorierte Markierungsspalten', b.markerSpalten)}
-    ${zeile('Sperr- und Infozeiträume', b.zeitraeume)}
+    ${zeile('Info- und Sperrzeilen (keine Personen)', Object.keys(b.zeilen).length ? Object.entries(b.zeilen).map(([n, x]) => `${esc(n)} (${x.typ === 'info' ? 'Info' : 'Sperrzeit'}, ${x.anzahl} Zeitr${x.anzahl === 1 ? 'aum' : 'äume'})`).join(', ') : '–')}
+    ${zeile('Platzhalterzeilen (zz…)', b.platzhalter + ' ignoriert')}
     ${zeile('Betriebliche Sondertage', b.sondertage ? b.sondertage + ' aus der Datei' : 'keine gefunden, Beispielwerte bleiben')}
     ${zeile('Urlaubskonten', b.kontoblatt ? `${b.konten} übernommen (${b.kontojahr}), ${b.ohneKonto} Personen ohne Konto${b.kontoOhnePerson ? ', ' + b.kontoOhnePerson + ' Zeilen ohne passende Person' : ''}` : 'kein Übersichtsblatt gefunden')}
     ${zeile('Mindestbesetzung', 'nicht in der Datei, je Team unter „Verwaltung“ setzbar')}
