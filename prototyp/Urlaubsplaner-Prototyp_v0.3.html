@@ -130,6 +130,8 @@ td select{width:auto;min-width:120px}
 .chk{display:flex;gap:10px;align-items:center;min-height:40px;cursor:pointer}
 .chk input{width:20px;height:20px;margin:0}
 .bericht td:first-child{color:var(--text-muted)}
+#dropZone{position:fixed;inset:12px;z-index:50;border:4px dashed var(--brand-dark);border-radius:var(--radius-card);background:rgba(255,255,255,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none}
+#dropZone strong{font-size:22px;margin-bottom:8px}
 
 @media (max-width:700px){
   main{padding:12px 16px}
@@ -161,9 +163,11 @@ td select{width:auto;min-width:120px}
   <span class="badge warn" id="modusBadge">▲ Prototyp mit fiktiven Daten</span>
   <label for="selUser">Angemeldet als (Demo):</label>
   <select id="selUser"></select>
-  <button type="button" class="secondary" id="btnImport">Excel testweise laden</button>
+  <button type="button" class="secondary" id="btnImport">Datei laden</button>
+  <button type="button" class="secondary" id="btnSichern">Arbeitsstand speichern</button>
+  <button type="button" class="secondary" id="btnBericht" hidden>Importbericht</button>
   <button type="button" class="secondary" id="btnReset" hidden>Zurück zu Beispieldaten</button>
-  <span class="hint" id="modusHint">Eingaben gehen beim Neuladen verloren. Bitte keine echten Namen oder Daten von Hand eintragen.</span>
+  <span class="hint" id="modusHint">Excel-Urlaubsliste oder gespeicherten Arbeitsstand einfach auf dieses Fenster ziehen. Nichts wird automatisch gespeichert.</span>
 </div>
 
 <main>
@@ -174,7 +178,7 @@ td select{width:auto;min-width:120px}
 
 <div class="wrap-footer">
 <footer class="app-footer">
-  <span><span class="class-badge" id="klasseBadge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.2 · Stand 16.11.2026</span>
+  <span><span class="class-badge" id="klasseBadge">Datenklasse offen, Prototyp mit fiktiven Daten</span> · Version 0.3 · Stand 16.11.2026</span>
   <span>Grundlage: Lastenheft Urlaubsplaner, Entwurf 0.1</span>
 </footer>
 </div>
@@ -240,18 +244,19 @@ td select{width:auto;min-width:120px}
 <dialog id="dlgImport" aria-labelledby="dlgImportTitel">
   <form id="frmImport">
     <div class="dlg-body">
-      <h2 id="dlgImportTitel">Excel-Urlaubsliste testweise laden</h2>
+      <h2 id="dlgImportTitel">Datei laden</h2>
+      <p class="hint" style="margin-top:0">Excel-Urlaubsliste (.xlsx) oder gespeicherter Arbeitsstand (.json). Schneller geht es, wenn du die Datei direkt auf das Fenster ziehst.</p>
       <ul class="msg">
         <li class="info">i Die Datei wird nur in diesem Browserfenster gelesen. Nichts wird hochgeladen oder gespeichert. Beim Schließen oder Neuladen ist alles weg.</li>
         <li class="warn">▲ Echte Daten nur für dich selbst ansehen. Für Vorführungen die Platzhalter-Namen eingeschaltet lassen und keine Bildschirmfotos mit echten Namen weitergeben.</li>
       </ul>
       <div class="fld" style="margin-top:12px">
-        <label class="lbl" for="fDatei">Excel-Datei (.xlsx)</label>
-        <input type="file" id="fDatei" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+        <label class="lbl" for="fDatei">Datei (.xlsx oder .json)</label>
+        <input type="file" id="fDatei" accept=".xlsx,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
       </div>
       <label class="chk"><input type="checkbox" id="fPseudo" checked> Namen durch Platzhalter ersetzen (Person 01, Person 02 …)</label>
       <label class="chk"><input type="checkbox" id="fReha"> Reha-Einträge (R) übernehmen</label>
-      <p class="hint">Reha ist ein Gesundheitsdatum und wird deshalb standardmäßig ausgelassen.</p>
+      <p class="hint">Reha ist ein Gesundheitsdatum und wird deshalb standardmäßig ausgelassen. Die Einstellungen gelten auch beim Ziehen und Ablegen und gelten nur für Excel-Dateien.</p>
       <div id="importBericht" aria-live="polite"></div>
     </div>
     <div class="dlg-actions">
@@ -260,6 +265,11 @@ td select{width:auto;min-width:120px}
     </div>
   </form>
 </dialog>
+
+<div id="dropZone" hidden aria-hidden="true">
+  <strong>Datei hier ablegen</strong>
+  <span id="dropInfo"></span>
+</div>
 
 <script>
 'use strict';
@@ -327,6 +337,8 @@ const state = {
   planFilter: 'alle',
   kontoJahr: JAHR + 1,
   planjahr: JAHR + 1,
+  quelle: 'beispiel',
+  pseudo: false,
   feiertagJahr: JAHR + 1,
   arten: ARTEN_START.map(a => Object.assign({}, a)),
   org: ORG.map(o => Object.assign({}, o)),
@@ -1313,13 +1325,17 @@ function uebernehmeImport(erg, opt){
   state.kontoJahr = bericht.kontojahr || bericht.hauptjahr;
   state.start = bericht.hauptjahr + '-01-01';
   state.user = personen[0].id; state.team = null; state.tab = 'kal'; state.ansicht = 'monat';
-  $('modusBadge').className = 'badge crit';
-  $('modusBadge').textContent = opt.pseudo ? '▲ Importierte Daten, Namen ersetzt' : '▲ Echte Daten geladen, nur in diesem Fenster';
-  $('modusHint').textContent = 'Nichts wird gespeichert. Neuladen oder „Zurück zu Beispieldaten“ entfernt die importierten Daten.';
-  $('btnReset').hidden = false;
-  $('klasseBadge').textContent = 'Datenklasse offen, enthält importierte Daten (nur in diesem Fenster)';
+  state.quelle = 'import'; state.pseudo = opt.pseudo;
+  setzeModus(opt.pseudo ? '▲ Importierte Daten, Namen ersetzt' : '▲ Echte Daten geladen, nur in diesem Fenster');
   renderUserSelect();
   render();
+}
+function setzeModus(text){
+  $('modusBadge').className = 'badge crit';
+  $('modusBadge').textContent = text;
+  $('modusHint').textContent = 'Nichts wird automatisch gespeichert. Mit „Arbeitsstand speichern“ sicherst du deine Änderungen als Datei.';
+  $('btnReset').hidden = false;
+  $('klasseBadge').textContent = 'Datenklasse offen, enthält geladene Daten (nur in diesem Fenster)';
 }
 
 function berichtHtml(b, opt){
@@ -1343,26 +1359,190 @@ function berichtHtml(b, opt){
   </tbody></table>`;
 }
 
+/* =========================================================
+   Arbeitsstand speichern und laden (.json)
+   Die Datei wird beim Laden streng geprüft, weil sie verändert worden sein kann.
+   ========================================================= */
+const FORMAT = 'urlaubsplaner-arbeitsstand';
+const RE_ID = /^[A-Za-z0-9_-]{1,24}$/;
+const RE_DATUM = /^\d{4}-\d{2}-\d{2}$/;
+let letzteOptionen = {pseudo: true, reha: false};
+let letzterBericht = '';
+
+function sichereArbeitsstand(){
+  const echte = state.quelle === 'import' && !state.pseudo;
+  const text = 'Der Arbeitsstand wird als Datei heruntergeladen. ' +
+    (state.quelle === 'beispiel' ? 'Er enthält nur Beispieldaten.' :
+     echte ? 'Er enthält ECHTE Namen und Abwesenheiten. Bitte nur in deinem persönlichen Bereich ablegen, nicht auf gemeinsamen Laufwerken, und nach dem Test löschen.' :
+     'Die Namen sind ersetzt, die Abwesenheiten sind aber echt. Bitte nur in deinem persönlichen Bereich ablegen und nach dem Test löschen.') + '\n\nJetzt speichern?';
+  if (!confirm(text)) return;
+  const daten = {
+    format: FORMAT, version: 1, gespeichert: new Date().toISOString(), quelle: state.quelle, pseudo: state.pseudo,
+    planMin: PLAN_MIN, planMax: PLAN_MAX, planjahr: state.planjahr, kontoJahr: state.kontoJahr,
+    personen: PERSONEN, org: state.org, abw: state.abw, zeitraeume: state.zeitraeume, konten: state.konten,
+    sondertage: state.sondertage,
+    arten: state.arten.map(a => ({id: a.id, sichtTeam: a.sichtTeam, sichtFk: a.sichtFk, aktiv: a.aktiv}))
+  };
+  const blob = new Blob([JSON.stringify(daten, null, 1)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'Urlaubsplaner-Arbeitsstand_' + HEUTE + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  meldung('Arbeitsstand gespeichert.');
+}
+
+function pruefeArbeitsstand(d){
+  const fehler = m => { throw new Error('Arbeitsstand ungültig: ' + m); };
+  const istObj = x => x && typeof x === 'object' && !Array.isArray(x);
+  const txt = (x, max) => typeof x === 'string' && x.length <= max;
+  const datum = x => typeof x === 'string' && RE_DATUM.test(x) && !isNaN(dt(x).getTime()) && iso(dt(x)) === x;
+  const id = x => typeof x === 'string' && RE_ID.test(x);
+  const zahlOk = (x, max) => typeof x === 'number' && isFinite(x) && x >= 0 && x <= max;
+  const liste = (x, max, n) => { if (!Array.isArray(x) || x.length > max) fehler(n + ' fehlt oder ist zu lang.'); return x; };
+  if (!istObj(d) || d.format !== FORMAT) fehler('Das ist keine Arbeitsstand-Datei des Urlaubsplaners.');
+  if (d.version !== 1) fehler('Unbekannte Version.');
+  if (!datum(d.planMin) || !datum(d.planMax) || d.planMin > d.planMax) fehler('Planungszeitraum.');
+  if (!Number.isInteger(d.planjahr) || !Number.isInteger(d.kontoJahr)) fehler('Jahresangaben.');
+  const org = liste(d.org, 500, 'Organisation').map(o => {
+    if (!istObj(o) || !id(o.id) || !txt(o.kuerzel, 40) || !(o.name === undefined || txt(o.name, 60)) || !['Team', 'Abteilung'].includes(o.typ) || !(o.parent === null || id(o.parent)) || !(o.min === undefined || (Number.isInteger(o.min) && o.min >= 0 && o.min <= 999))) fehler('Organisationseinheit.');
+    return {id: o.id, kuerzel: o.kuerzel, name: o.name || '', typ: o.typ, parent: o.parent, min: o.min || 0};
+  });
+  const orgIds = new Set(org.map(o => o.id));
+  if (org.some(o => o.parent && !orgIds.has(o.parent))) fehler('Verweis auf unbekannte Organisationseinheit.');
+  const personen = liste(d.personen, 5000, 'Personen').map(p => {
+    if (!istObj(p) || !id(p.id) || !txt(p.name, 100) || !(p.team === null || orgIds.has(p.team)) || !Array.isArray(p.rollen) || !p.rollen.every(r => ['ma', 'fk', 'admin'].includes(r))
+      || !(p.fuehrt === undefined || (Array.isArray(p.fuehrt) && p.fuehrt.every(f => orgIds.has(f)))) || !(p.info === undefined || txt(p.info, 100))) fehler('Person.');
+    const x = {id: p.id, name: p.name, team: p.team, rollen: p.rollen.slice()};
+    if (p.fuehrt) x.fuehrt = p.fuehrt.slice();
+    if (p.info) x.info = p.info;
+    return x;
+  });
+  const pIds = new Set(personen.map(p => p.id));
+  if (!personen.length || pIds.size !== personen.length) fehler('Personenliste.');
+  const abw = liste(d.abw, 100000, 'Abwesenheiten').map(a => {
+    if (!istObj(a) || !id(a.id) || !pIds.has(a.person) || !ARTEN_START.some(x => x.id === a.art) || !datum(a.von) || !datum(a.bis) || a.von > a.bis || !STATUS[a.status]) fehler('Abwesenheit.');
+    return {id: a.id, person: a.person, art: a.art, von: a.von, bis: a.bis, status: a.status};
+  });
+  const zeitraeume = liste(d.zeitraeume, 5000, 'Zeiträume').map(z => {
+    if (!istObj(z) || !id(z.id) || !txt(z.bez, 100) || !['sperr', 'info'].includes(z.typ) || !datum(z.von) || !datum(z.bis) || z.von > z.bis || !(z.geltung === null || orgIds.has(z.geltung))) fehler('Zeitraum.');
+    return {id: z.id, bez: z.bez, typ: z.typ, von: z.von, bis: z.bis, geltung: z.geltung};
+  });
+  const sondertage = liste(d.sondertage, 1000, 'Sondertage').map(x => {
+    if (!istObj(x) || !id(x.id) || !datum(x.datum) || !txt(x.bez, 100)) fehler('Sondertag.');
+    return {id: x.id, datum: x.datum, bez: x.bez};
+  });
+  if (!istObj(d.konten)) fehler('Urlaubskonten.');
+  const konten = {};
+  for (const [k, v] of Object.entries(d.konten)) {
+    const m = /^([A-Za-z0-9_-]{1,24})\|(\d{4})$/.exec(k);
+    if (!m || !pIds.has(m[1]) || !istObj(v) || !zahlOk(v.anspruch, 100) || !zahlOk(v.rest, 100) || !datum(v.geaendert)) fehler('Urlaubskonto.');
+    konten[k] = {anspruch: v.anspruch, rest: v.rest, geaendert: v.geaendert};
+  }
+  const arten = ARTEN_START.map(a => Object.assign({}, a));
+  for (const x of liste(d.arten, 50, 'Abwesenheitsarten')) {
+    const a = arten.find(y => istObj(x) && y.id === x.id);
+    if (!a || !SICHT[x.sichtTeam] || !SICHT[x.sichtFk] || typeof x.aktiv !== 'boolean') fehler('Abwesenheitsart.');
+    a.sichtTeam = x.sichtTeam; a.sichtFk = x.sichtFk; a.aktiv = x.aktiv;
+  }
+  return {personen, org, abw, zeitraeume, sondertage, konten, arten,
+    planMin: d.planMin, planMax: d.planMax, planjahr: d.planjahr, kontoJahr: d.kontoJahr,
+    quelle: d.quelle === 'import' ? 'import' : 'beispiel', pseudo: d.pseudo === true,
+    gespeichert: typeof d.gespeichert === 'string' && !isNaN(Date.parse(d.gespeichert)) ? new Date(d.gespeichert) : null};
+}
+
+function ladeArbeitsstand(text){
+  let roh;
+  try { roh = JSON.parse(text); } catch (e) { throw new Error('Die Datei ist kein gültiger Arbeitsstand (kein JSON).'); }
+  const d = pruefeArbeitsstand(roh);
+  PERSONEN = d.personen;
+  Object.assign(state, {org: d.org, abw: d.abw, zeitraeume: d.zeitraeume, sondertage: d.sondertage, konten: d.konten, arten: d.arten,
+    planjahr: d.planjahr, kontoJahr: d.kontoJahr, quelle: d.quelle, pseudo: d.pseudo,
+    user: d.personen[0].id, team: null, tab: 'kal', ansicht: 'monat', start: d.planjahr + '-01-01'});
+  PLAN_MIN = d.planMin; PLAN_MAX = d.planMax;
+  setzeModus(d.quelle === 'beispiel' ? '▲ Arbeitsstand mit Beispieldaten' : d.pseudo ? '▲ Arbeitsstand geladen, Namen ersetzt' : '▲ Arbeitsstand mit echten Daten, nur in diesem Fenster');
+  renderUserSelect();
+  render();
+  const stand = d.gespeichert ? d.gespeichert.toLocaleString('de-DE', {dateStyle: 'short', timeStyle: 'short'}) : 'unbekannt';
+  return `<ul class="msg"><li class="ok">✓ Arbeitsstand vom ${esc(stand)} geladen: ${d.personen.filter(x => x.id !== 'IFK' && !x.rollen.includes('admin')).length} Personen, ${d.abw.length} Einträge, ${Object.keys(d.konten).length} Urlaubskonten.</li></ul>`;
+}
+
+/* Gemeinsamer Einstieg für Dialog sowie Ziehen und Ablegen */
+const MAX_DATEI = 20 * 1024 * 1024;
+async function ladeDatei(datei, opt){
+  if (!datei) throw new Error('Bitte eine Datei auswählen.');
+  if (datei.size > MAX_DATEI) throw new Error('Die Datei ist zu groß (mehr als 20 MB).');
+  const name = datei.name.toLowerCase();
+  if (name.endsWith('.json')) {
+    const html = ladeArbeitsstand(await datei.text());
+    return {html, kurz: 'Arbeitsstand geladen.'};
+  }
+  if (name.endsWith('.xlsx')) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('Dieser Browser unterstützt das Einlesen nicht. Bitte einen aktuellen Edge, Chrome oder Firefox verwenden.');
+    const erg = werteAus(await leseMappe(await datei.arrayBuffer()), opt);
+    uebernehmeImport(erg, opt);
+    const b = erg.bericht;
+    return {html: berichtHtml(b, opt), kurz: `Excel eingelesen: ${b.personen} Personen, ${b.eintraege} Einträge.`};
+  }
+  throw new Error('Bitte eine .xlsx- oder .json-Datei verwenden.');
+}
+function zeigeBerichtKnopf(html){
+  letzterBericht = html;
+  $('btnBericht').hidden = false;
+}
 async function starteImport(e){
   e.preventDefault();
-  const datei = $('fDatei').files[0], ziel = $('importBericht');
-  if (!datei) { ziel.innerHTML = '<ul class="msg"><li class="crit">✕ Bitte eine Datei auswählen.</li></ul>'; return; }
-  if (typeof DecompressionStream === 'undefined') { ziel.innerHTML = '<ul class="msg"><li class="crit">✕ Dieser Browser unterstützt das Einlesen nicht. Bitte einen aktuellen Edge, Chrome oder Firefox verwenden.</li></ul>'; return; }
-  const opt = {pseudo: $('fPseudo').checked, reha: $('fReha').checked};
+  const ziel = $('importBericht');
+  letzteOptionen = {pseudo: $('fPseudo').checked, reha: $('fReha').checked};
   $('btnImportStart').disabled = true;
   ziel.innerHTML = '<p class="hint">Datei wird gelesen …</p>';
   try {
-    const erg = werteAus(await leseMappe(await datei.arrayBuffer()), opt);
-    uebernehmeImport(erg, opt);
-    ziel.innerHTML = berichtHtml(erg.bericht, opt);
+    const r = await ladeDatei($('fDatei').files[0], letzteOptionen);
+    ziel.innerHTML = r.html;
+    zeigeBerichtKnopf(r.html);
     $('btnImportSchliessen').textContent = 'Zur Ansicht';
-    meldung('Excel-Datei eingelesen.');
+    meldung(r.kurz);
   } catch (err) {
     ziel.innerHTML = `<ul class="msg"><li class="crit">✕ ${esc(err && err.message ? err.message : 'Die Datei konnte nicht gelesen werden.')}</li></ul>`;
   } finally {
     $('btnImportStart').disabled = false;
   }
 }
+function zeigeBericht(html){
+  $('importBericht').innerHTML = html;
+  $('btnImportSchliessen').textContent = 'Zur Ansicht';
+  $('fDatei').value = '';
+  $('fPseudo').checked = letzteOptionen.pseudo; $('fReha').checked = letzteOptionen.reha;
+  if (!$('dlgImport').open) $('dlgImport').showModal();
+}
+
+/* Ziehen und Ablegen auf das ganze Fenster */
+let zieht = 0;
+const hatDateien = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+document.addEventListener('dragenter', e => {
+  if (!hatDateien(e)) return;
+  e.preventDefault();
+  if (zieht++ === 0) {
+    $('dropInfo').textContent = `Excel-Urlaubsliste oder Arbeitsstand. Einstellungen für Excel: Namen ersetzen ${letzteOptionen.pseudo ? 'an' : 'aus'}, Reha ${letzteOptionen.reha ? 'übernehmen' : 'auslassen'}.`;
+    $('dropZone').hidden = false;
+  }
+});
+document.addEventListener('dragover', e => { if (hatDateien(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+document.addEventListener('dragleave', e => { if (hatDateien(e) && --zieht <= 0) { zieht = 0; $('dropZone').hidden = true; } });
+document.addEventListener('drop', async e => {
+  if (!hatDateien(e)) return;
+  e.preventDefault();
+  zieht = 0; $('dropZone').hidden = true;
+  const datei = e.dataTransfer.files[0];
+  if (e.dataTransfer.files.length > 1) meldung('Es wird nur die erste Datei verwendet.');
+  try {
+    const r = await ladeDatei(datei, letzteOptionen);
+    zeigeBerichtKnopf(r.html);
+    if ($('dlgImport').open) zeigeBericht(r.html);
+    meldung(r.kurz + ' Details unter „Importbericht“.');
+  } catch (err) {
+    zeigeBericht(`<ul class="msg"><li class="crit">✕ ${esc(err && err.message ? err.message : 'Die Datei konnte nicht gelesen werden.')}</li></ul>`);
+  }
+});
 
 /* =========================================================
    Ereignisse
@@ -1470,8 +1650,13 @@ $('frmIcs').addEventListener('submit', ladeIcs);
 $('btnIcsAbbrechen').addEventListener('click', () => $('dlgIcs').close());
 $('btnImport').addEventListener('click', () => {
   $('importBericht').innerHTML = ''; $('btnImportSchliessen').textContent = 'Schließen'; $('fDatei').value = '';
+  $('fPseudo').checked = letzteOptionen.pseudo; $('fReha').checked = letzteOptionen.reha;
   $('dlgImport').showModal();
 });
+$('fPseudo').addEventListener('change', e => { letzteOptionen.pseudo = e.target.checked; });
+$('fReha').addEventListener('change', e => { letzteOptionen.reha = e.target.checked; });
+$('btnSichern').addEventListener('click', sichereArbeitsstand);
+$('btnBericht').addEventListener('click', () => zeigeBericht(letzterBericht));
 $('btnImportSchliessen').addEventListener('click', () => $('dlgImport').close());
 $('frmImport').addEventListener('submit', starteImport);
 $('btnReset').addEventListener('click', () => {
